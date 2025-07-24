@@ -1,0 +1,30 @@
+[Unit]
+Description=Document Embedding REST API Service v3 with Integrated OpenAPI Documentation
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=chris
+Group=chris
+WorkingDirectory=/home/chris/document_embedding_project_clean
+Environment=PATH=/home/chris/document_embedding_project_clean/venv/bin
+ExecStart=/home/chris/document_embedding_project_clean/venv/bin/python production_rest_api_service_v3.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=document-embedding-api-v3
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=32768
+
+# Security settings
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=/home/chris/document_embedding_project_clean
+
+[Install]
+WantedBy=multi-user.target

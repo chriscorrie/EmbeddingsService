@@ -1,0 +1,1461 @@
+{
+  "summary": {
+    "total_operations": 135,
+    "total_time": 60.42382305400679,
+    "avg_time": 0.44758387447412434,
+    "total_time_ms": 60423.82305400679,
+    "avg_time_ms": 447.58387447412434
+  },
+  "by_operation": {
+    "sql_data_retrieval": {
+      "count": 1,
+      "total_time": 1.5681306929909624,
+      "avg_time": 1.5681306929909624,
+      "min_time": 1.5681306929909624,
+      "max_time": 1.5681306929909624,
+      "total_time_ms": 1568.1306929909624,
+      "avg_time_ms": 1568.1306929909624
+    },
+    "data_grouping": {
+      "count": 1,
+      "total_time": 3.682903479784727e-05,
+      "avg_time": 3.682903479784727e-05,
+      "min_time": 3.682903479784727e-05,
+      "max_time": 3.682903479784727e-05,
+      "total_time_ms": 0.03682903479784727,
+      "avg_time_ms": 0.03682903479784727
+    },
+    "title_embedding": {
+      "count": 5,
+      "total_time": 0.0022526999819092453,
+      "avg_time": 0.00045053999638184906,
+      "min_time": 0.0004011949640698731,
+      "max_time": 0.0005031069740653038,
+      "total_time_ms": 2.2526999819092453,
+      "avg_time_ms": 0.45053999638184905
+    },
+    "process_single_opportunity": {
+      "count": 5,
+      "total_time": 13.647618497023359,
+      "avg_time": 2.729523699404672,
+      "min_time": 0.0013686250313185155,
+      "max_time": 12.088473676994909,
+      "total_time_ms": 13647.618497023359,
+      "avg_time_ms": 2729.523699404672
+    },
+    "description_embedding": {
+      "count": 3,
+      "total_time": 0.0019843849586322904,
+      "avg_time": 0.0006614616528774301,
+      "min_time": 0.0003958549932576716,
+      "max_time": 0.0008751169661991298,
+      "total_time_ms": 1.9843849586322904,
+      "avg_time_ms": 0.6614616528774301
+    },
+    "document_mapping": {
+      "count": 11,
+      "total_time": 0.05146935995435342,
+      "avg_time": 0.0046790327231230385,
+      "min_time": 0.001334570988547057,
+      "max_time": 0.026429979014210403,
+      "total_time_ms": 51.46935995435342,
+      "avg_time_ms": 4.679032723123038
+    },
+    "file_claim_check": {
+      "count": 11,
+      "total_time": 0.5289330090745352,
+      "avg_time": 0.04808481900677593,
+      "min_time": 0.0018253449816256762,
+      "max_time": 0.3038384030223824,
+      "total_time_ms": 528.9330090745352,
+      "avg_time_ms": 48.08481900677593
+    },
+    "file_read": {
+      "count": 11,
+      "total_time": 1.7764648160082288,
+      "avg_time": 0.16149680145529352,
+      "min_time": 0.03333722800016403,
+      "max_time": 0.4371180009911768,
+      "total_time_ms": 1776.4648160082288,
+      "avg_time_ms": 161.4968014552935
+    },
+    "text_chunk": {
+      "count": 11,
+      "total_time": 0.005588765081483871,
+      "avg_time": 0.0005080695528621701,
+      "min_time": 0.0002769610146060586,
+      "max_time": 0.0007843259954825044,
+      "total_time_ms": 5.588765081483871,
+      "avg_time_ms": 0.5080695528621701
+    },
+    "parallel_entity_collection": {
+      "count": 3,
+      "total_time": 0.7010923949419521,
+      "avg_time": 0.2336974649806507,
+      "min_time": 3.883300814777613e-05,
+      "max_time": 0.7010094489669427,
+      "total_time_ms": 701.0923949419521,
+      "avg_time_ms": 233.6974649806507
+    },
+    "boilerplate_filter": {
+      "count": 11,
+      "total_time": 3.038165246078279,
+      "avg_time": 0.2761968405525708,
+      "min_time": 0.025102240033447742,
+      "max_time": 0.5616081379703246,
+      "total_time_ms": 3038.165246078279,
+      "avg_time_ms": 276.19684055257085
+    },
+    "embedding_model_encode": {
+      "count": 10,
+      "total_time": 1.3016882509109564,
+      "avg_time": 0.13016882509109565,
+      "min_time": 0.0112862290116027,
+      "max_time": 0.39872781396843493,
+      "total_time_ms": 1301.6882509109564,
+      "avg_time_ms": 130.16882509109564
+    },
+    "vector_store": {
+      "count": 11,
+      "total_time": 0.03418904100544751,
+      "avg_time": 0.0031080946368588643,
+      "min_time": 0.002230777987278998,
+      "max_time": 0.007466993003617972,
+      "total_time_ms": 34.18904100544751,
+      "avg_time_ms": 3.1080946368588642
+    },
+    "process_embedding_chunks_batch": {
+      "count": 11,
+      "total_time": 4.175698314968031,
+      "avg_time": 0.37960893772436644,
+      "min_time": 0.002706262981519103,
+      "max_time": 1.0636559120030142,
+      "total_time_ms": 4175.698314968031,
+      "avg_time_ms": 379.60893772436646
+    },
+    "embedding_generate": {
+      "count": 11,
+      "total_time": 4.177440656058025,
+      "avg_time": 0.3797673323689113,
+      "min_time": 0.0028419680311344564,
+      "max_time": 1.0638142200186849,
+      "total_time_ms": 4177.440656058025,
+      "avg_time_ms": 379.7673323689113
+    },
+    "process_single_file": {
+      "count": 11,
+      "total_time": 12.766938128042966,
+      "avg_time": 1.1606307389129968,
+      "min_time": 0.47322733502369374,
+      "max_time": 2.0590886439895257,
+      "total_time_ms": 12766.938128042966,
+      "avg_time_ms": 1160.6307389129968
+    },
+    "files_sequential_processing": {
+      "count": 2,
+      "total_time": 12.82575093692867,
+      "avg_time": 6.412875468464335,
+      "min_time": 0.794531877967529,
+      "max_time": 12.031219058961142,
+      "total_time_ms": 12825.75093692867,
+      "avg_time_ms": 6412.875468464335
+    },
+    "entity_filter_confidence": {
+      "count": 1,
+      "total_time": 0.0004914149758405983,
+      "avg_time": 0.0004914149758405983,
+      "min_time": 0.0004914149758405983,
+      "max_time": 0.0004914149758405983,
+      "total_time_ms": 0.49141497584059834,
+      "avg_time_ms": 0.49141497584059834
+    },
+    "entity_consolidation": {
+      "count": 1,
+      "total_time": 0.0001821519690565765,
+      "avg_time": 0.0001821519690565765,
+      "min_time": 0.0001821519690565765,
+      "max_time": 0.0001821519690565765,
+      "total_time_ms": 0.1821519690565765,
+      "avg_time_ms": 0.1821519690565765
+    },
+    "entity_storage_db": {
+      "count": 1,
+      "total_time": 0.04056697298074141,
+      "avg_time": 0.04056697298074141,
+      "min_time": 0.04056697298074141,
+      "max_time": 0.04056697298074141,
+      "total_time_ms": 40.56697298074141,
+      "avg_time_ms": 40.56697298074141
+    },
+    "process_opportunity_entities": {
+      "count": 1,
+      "total_time": 0.04138101503485814,
+      "avg_time": 0.04138101503485814,
+      "min_time": 0.04138101503485814,
+      "max_time": 0.04138101503485814,
+      "total_time_ms": 41.38101503485814,
+      "avg_time_ms": 41.38101503485814
+    },
+    "entity_storage": {
+      "count": 1,
+      "total_time": 0.0414433220284991,
+      "avg_time": 0.0414433220284991,
+      "min_time": 0.0414433220284991,
+      "max_time": 0.0414433220284991,
+      "total_time_ms": 41.4433220284991,
+      "avg_time_ms": 41.4433220284991
+    },
+    "cleanup_operations": {
+      "count": 1,
+      "total_time": 3.6963161539752036,
+      "avg_time": 3.6963161539752036,
+      "min_time": 3.6963161539752036,
+      "max_time": 3.6963161539752036,
+      "total_time_ms": 3696.3161539752036,
+      "avg_time_ms": 3696.3161539752036
+    }
+  },
+  "by_category": {
+    "file_io": {
+      "count": 11,
+      "total_time": 1.7764648160082288,
+      "percentage": 2.940007312050456,
+      "operations": [
+        "file_read"
+      ]
+    },
+    "processing": {
+      "count": 22,
+      "total_time": 4.1830294211395085,
+      "percentage": 6.922814892729841,
+      "operations": [
+        "embedding_generate",
+        "text_chunk"
+      ]
+    },
+    "database": {
+      "count": 11,
+      "total_time": 0.03418904100544751,
+      "percentage": 0.05658205535073369,
+      "operations": [
+        "vector_store"
+      ]
+    },
+    "comparison": {
+      "count": 11,
+      "total_time": 3.038165246078279,
+      "percentage": 5.028091723628226,
+      "operations": [
+        "boilerplate_filter"
+      ]
+    }
+  },
+  "bottlenecks": [
+    {
+      "operation": "process_single_opportunity",
+      "total_time": 13.647618497023359,
+      "percentage": 22.58648626854531,
+      "avg_time_ms": 2729.523699404672
+    },
+    {
+      "operation": "files_sequential_processing",
+      "total_time": 12.82575093692867,
+      "percentage": 21.22631486833433,
+      "avg_time_ms": 6412.875468464335
+    },
+    {
+      "operation": "process_single_file",
+      "total_time": 12.766938128042966,
+      "percentage": 21.12898105873222,
+      "avg_time_ms": 1160.6307389129968
+    }
+  ],
+  "threads_used": [
+    "Thread-10 (process_embeddings_background)",
+    "ThreadPoolExecutor-0_1",
+    "ThreadPoolExecutor-0_4",
+    "ThreadPoolExecutor-0_3",
+    "ThreadPoolExecutor-0_2",
+    "ThreadPoolExecutor-0_0"
+  ],
+  "raw_timings": [
+    {
+      "operation": "sql_data_retrieval",
+      "duration": 1.5681306929909624,
+      "duration_ms": 1568.1306929909624,
+      "thread_id": "Thread-10 (process_embeddings_background)",
+      "metadata": {
+        "row_count": 4
+      }
+    },
+    {
+      "operation": "data_grouping",
+      "duration": 3.682903479784727e-05,
+      "duration_ms": 0.03682903479784727,
+      "thread_id": "Thread-10 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "title_embedding",
+      "duration": 0.00048616400454193354,
+      "duration_ms": 0.48616400454193354,
+      "thread_id": "ThreadPoolExecutor-0_0",
+      "metadata": {}
+    },
+    {
+      "operation": "title_embedding",
+      "duration": 0.0005031069740653038,
+      "duration_ms": 0.5031069740653038,
+      "thread_id": "ThreadPoolExecutor-0_1",
+      "metadata": {}
+    },
+    {
+      "operation": "title_embedding",
+      "duration": 0.00044452701695263386,
+      "duration_ms": 0.44452701695263386,
+      "thread_id": "ThreadPoolExecutor-0_2",
+      "metadata": {}
+    },
+    {
+      "operation": "process_single_opportunity",
+      "duration": 0.0013686250313185155,
+      "duration_ms": 1.3686250313185155,
+      "thread_id": "ThreadPoolExecutor-0_1",
+      "metadata": {
+        "opportunity_id": "02F224E0-5101-4D76-A4D6-0002B6D9AAD3",
+        "file_count": 0
+      }
+    },
+    {
+      "operation": "title_embedding",
+      "duration": 0.00041770702227950096,
+      "duration_ms": 0.41770702227950096,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {}
+    },
+    {
+      "operation": "description_embedding",
+      "duration": 0.0003958549932576716,
+      "duration_ms": 0.3958549932576716,
+      "thread_id": "ThreadPoolExecutor-0_0",
+      "metadata": {}
+    },
+    {
+      "operation": "title_embedding",
+      "duration": 0.0004011949640698731,
+      "duration_ms": 0.4011949640698731,
+      "thread_id": "ThreadPoolExecutor-0_4",
+      "metadata": {}
+    },
+    {
+      "operation": "process_single_opportunity",
+      "duration": 0.0015429230406880379,
+      "duration_ms": 1.5429230406880379,
+      "thread_id": "ThreadPoolExecutor-0_2",
+      "metadata": {
+        "opportunity_id": "B27E51E4-7539-4772-8E86-000362CA96E5",
+        "file_count": 0
+      }
+    },
+    {
+      "operation": "description_embedding",
+      "duration": 0.0008751169661991298,
+      "duration_ms": 0.8751169661991298,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {}
+    },
+    {
+      "operation": "description_embedding",
+      "duration": 0.000713412999175489,
+      "duration_ms": 0.713412999175489,
+      "thread_id": "ThreadPoolExecutor-0_4",
+      "metadata": {}
+    },
+    {
+      "operation": "document_mapping",
+      "duration": 0.010609977005515248,
+      "duration_ms": 10.609977005515248,
+      "thread_id": "ThreadPoolExecutor-0_0",
+      "metadata": {}
+    },
+    {
+      "operation": "document_mapping",
+      "duration": 0.026429979014210403,
+      "duration_ms": 26.429979014210403,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {}
+    },
+    {
+      "operation": "file_claim_check",
+      "duration": 0.20455976098310202,
+      "duration_ms": 204.55976098310202,
+      "thread_id": "ThreadPoolExecutor-0_0",
+      "metadata": {
+        "file_id": 1500867
+      }
+    },
+    {
+      "operation": "file_claim_check",
+      "duration": 0.3038384030223824,
+      "duration_ms": 303.8384030223824,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "file_id": 1502195
+      }
+    },
+    {
+      "operation": "file_read",
+      "duration": 0.4371180009911768,
+      "duration_ms": 437.1180009911768,
+      "thread_id": "ThreadPoolExecutor-0_0",
+      "metadata": {
+        "file_path": "/mnt/HomerShare/FBO Attachments/36C24623B0066.docx"
+      }
+    },
+    {
+      "operation": "file_read",
+      "duration": 0.29771954799070954,
+      "duration_ms": 297.71954799070954,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "file_path": "/mnt/HomerShare/FBO Attachments/ACC-APG DIV A Competitive Opportunities as of 03 October 2023.pdf"
+      }
+    },
+    {
+      "operation": "text_chunk",
+      "duration": 0.0006402049912139773,
+      "duration_ms": 0.6402049912139773,
+      "thread_id": "ThreadPoolExecutor-0_0",
+      "metadata": {
+        "text_length": 350
+      }
+    },
+    {
+      "operation": "text_chunk",
+      "duration": 0.0007843259954825044,
+      "duration_ms": 0.7843259954825044,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "text_length": 15229
+      }
+    },
+    {
+      "operation": "parallel_entity_collection",
+      "duration": 0.7010094489669427,
+      "duration_ms": 701.0094489669427,
+      "thread_id": "ThreadPoolExecutor-0_4",
+      "metadata": {}
+    },
+    {
+      "operation": "process_single_opportunity",
+      "duration": 0.759167815966066,
+      "duration_ms": 759.167815966066,
+      "thread_id": "ThreadPoolExecutor-0_4",
+      "metadata": {
+        "opportunity_id": "DFC6A21F-E072-4CC0-A185-0008931F1CBA",
+        "file_count": 0
+      }
+    },
+    {
+      "operation": "boilerplate_filter",
+      "duration": 0.025102240033447742,
+      "duration_ms": 25.102240033447742,
+      "thread_id": "ThreadPoolExecutor-0_0",
+      "metadata": {
+        "chunk_count": 1
+      }
+    },
+    {
+      "operation": "embedding_model_encode",
+      "duration": 0.0112862290116027,
+      "duration_ms": 11.2862290116027,
+      "thread_id": "ThreadPoolExecutor-0_0",
+      "metadata": {
+        "batch_size": 1,
+        "cache_hits": 0
+      }
+    },
+    {
+      "operation": "vector_store",
+      "duration": 0.007466993003617972,
+      "duration_ms": 7.466993003617972,
+      "thread_id": "ThreadPoolExecutor-0_0",
+      "metadata": {
+        "vector_count": 1
+      }
+    },
+    {
+      "operation": "process_embedding_chunks_batch",
+      "duration": 0.01920461095869541,
+      "duration_ms": 19.20461095869541,
+      "thread_id": "ThreadPoolExecutor-0_0",
+      "metadata": {
+        "total_chunks": 1
+      }
+    },
+    {
+      "operation": "embedding_generate",
+      "duration": 0.019317363970912993,
+      "duration_ms": 19.317363970912993,
+      "thread_id": "ThreadPoolExecutor-0_0",
+      "metadata": {
+        "chunk_count": 1
+      }
+    },
+    {
+      "operation": "process_single_file",
+      "duration": 0.7909122770070098,
+      "duration_ms": 790.9122770070098,
+      "thread_id": "ThreadPoolExecutor-0_0",
+      "metadata": {
+        "file_id": 1500867
+      }
+    },
+    {
+      "operation": "files_sequential_processing",
+      "duration": 0.794531877967529,
+      "duration_ms": 794.531877967529,
+      "thread_id": "ThreadPoolExecutor-0_0",
+      "metadata": {
+        "file_count": 1
+      }
+    },
+    {
+      "operation": "parallel_entity_collection",
+      "duration": 3.883300814777613e-05,
+      "duration_ms": 0.03883300814777613,
+      "thread_id": "ThreadPoolExecutor-0_0",
+      "metadata": {}
+    },
+    {
+      "operation": "process_single_opportunity",
+      "duration": 0.7970654559903778,
+      "duration_ms": 797.0654559903778,
+      "thread_id": "ThreadPoolExecutor-0_0",
+      "metadata": {
+        "opportunity_id": "89BBE3D8-00B5-4EC3-B303-0001D801AB9A",
+        "file_count": 1
+      }
+    },
+    {
+      "operation": "boilerplate_filter",
+      "duration": 0.1892186810146086,
+      "duration_ms": 189.2186810146086,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "chunk_count": 11
+      }
+    },
+    {
+      "operation": "embedding_model_encode",
+      "duration": 0.1112540690228343,
+      "duration_ms": 111.2540690228343,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "batch_size": 11,
+        "cache_hits": 0
+      }
+    },
+    {
+      "operation": "vector_store",
+      "duration": 0.0022754219826310873,
+      "duration_ms": 2.2754219826310873,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "vector_count": 11
+      }
+    },
+    {
+      "operation": "process_embedding_chunks_batch",
+      "duration": 0.28226154699223116,
+      "duration_ms": 282.26154699223116,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "total_chunks": 11
+      }
+    },
+    {
+      "operation": "embedding_generate",
+      "duration": 0.28242722898721695,
+      "duration_ms": 282.42722898721695,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "chunk_count": 11
+      }
+    },
+    {
+      "operation": "process_single_file",
+      "duration": 1.3925799839780666,
+      "duration_ms": 1392.5799839780666,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "file_id": 1502195
+      }
+    },
+    {
+      "operation": "document_mapping",
+      "duration": 0.001334570988547057,
+      "duration_ms": 1.334570988547057,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {}
+    },
+    {
+      "operation": "file_claim_check",
+      "duration": 0.0021625200170092285,
+      "duration_ms": 2.1625200170092285,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "file_id": 1418642
+      }
+    },
+    {
+      "operation": "file_read",
+      "duration": 0.14423413400072604,
+      "duration_ms": 144.23413400072604,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "file_path": "/mnt/HomerShare/FBO Attachments/ACC Division A Opportunities 24 November 2021.pdf"
+      }
+    },
+    {
+      "operation": "text_chunk",
+      "duration": 0.0004984179977327585,
+      "duration_ms": 0.4984179977327585,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "text_length": 23076
+      }
+    },
+    {
+      "operation": "boilerplate_filter",
+      "duration": 0.27249781298451126,
+      "duration_ms": 272.49781298451126,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "chunk_count": 19
+      }
+    },
+    {
+      "operation": "embedding_model_encode",
+      "duration": 0.2153191679972224,
+      "duration_ms": 215.3191679972224,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "batch_size": 19,
+        "cache_hits": 0
+      }
+    },
+    {
+      "operation": "vector_store",
+      "duration": 0.002483182994183153,
+      "duration_ms": 2.483182994183153,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "vector_count": 19
+      }
+    },
+    {
+      "operation": "process_embedding_chunks_batch",
+      "duration": 0.5198010330204852,
+      "duration_ms": 519.8010330204852,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "total_chunks": 19
+      }
+    },
+    {
+      "operation": "embedding_generate",
+      "duration": 0.5199538400047459,
+      "duration_ms": 519.9538400047459,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "chunk_count": 19
+      }
+    },
+    {
+      "operation": "process_single_file",
+      "duration": 1.2454135610023513,
+      "duration_ms": 1245.4135610023513,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "file_id": 1418642
+      }
+    },
+    {
+      "operation": "document_mapping",
+      "duration": 0.001610941020771861,
+      "duration_ms": 1.610941020771861,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {}
+    },
+    {
+      "operation": "file_claim_check",
+      "duration": 0.002383526007179171,
+      "duration_ms": 2.383526007179171,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "file_id": 1498089
+      }
+    },
+    {
+      "operation": "file_read",
+      "duration": 0.13018337200628594,
+      "duration_ms": 130.18337200628594,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "file_path": "/mnt/HomerShare/FBO Attachments/ACC-APG DIV A Competitive Opportunities as of 12 September 2023.pdf"
+      }
+    },
+    {
+      "operation": "text_chunk",
+      "duration": 0.0003087709774263203,
+      "duration_ms": 0.3087709774263203,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "text_length": 14384
+      }
+    },
+    {
+      "operation": "boilerplate_filter",
+      "duration": 0.16462292399955913,
+      "duration_ms": 164.62292399955913,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "chunk_count": 11
+      }
+    },
+    {
+      "operation": "embedding_model_encode",
+      "duration": 0.10722485597943887,
+      "duration_ms": 107.22485597943887,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "batch_size": 11,
+        "cache_hits": 0
+      }
+    },
+    {
+      "operation": "vector_store",
+      "duration": 0.0023382300278171897,
+      "duration_ms": 2.3382300278171897,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "vector_count": 11
+      }
+    },
+    {
+      "operation": "process_embedding_chunks_batch",
+      "duration": 0.3124567110207863,
+      "duration_ms": 312.4567110207863,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "total_chunks": 11
+      }
+    },
+    {
+      "operation": "embedding_generate",
+      "duration": 0.3125912650139071,
+      "duration_ms": 312.5912650139071,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "chunk_count": 11
+      }
+    },
+    {
+      "operation": "process_single_file",
+      "duration": 0.8078564630122855,
+      "duration_ms": 807.8564630122855,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "file_id": 1498089
+      }
+    },
+    {
+      "operation": "document_mapping",
+      "duration": 0.0017032449832186103,
+      "duration_ms": 1.7032449832186103,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {}
+    },
+    {
+      "operation": "file_claim_check",
+      "duration": 0.002214466978330165,
+      "duration_ms": 2.214466978330165,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "file_id": 1498090
+      }
+    },
+    {
+      "operation": "file_read",
+      "duration": 0.11350094800582156,
+      "duration_ms": 113.50094800582156,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "file_path": "/mnt/HomerShare/FBO Attachments/ACC-APG DIV A Competitive Opportunities as of 30 August 2023.pdf"
+      }
+    },
+    {
+      "operation": "text_chunk",
+      "duration": 0.00030520401196554303,
+      "duration_ms": 0.30520401196554303,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "text_length": 14384
+      }
+    },
+    {
+      "operation": "boilerplate_filter",
+      "duration": 0.16812625603051856,
+      "duration_ms": 168.12625603051856,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "chunk_count": 11
+      }
+    },
+    {
+      "operation": "vector_store",
+      "duration": 0.002524862007703632,
+      "duration_ms": 2.524862007703632,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "vector_count": 11
+      }
+    },
+    {
+      "operation": "process_embedding_chunks_batch",
+      "duration": 0.002706262981519103,
+      "duration_ms": 2.706262981519103,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "total_chunks": 11
+      }
+    },
+    {
+      "operation": "embedding_generate",
+      "duration": 0.0028419680311344564,
+      "duration_ms": 2.8419680311344564,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "chunk_count": 11
+      }
+    },
+    {
+      "operation": "process_single_file",
+      "duration": 0.47322733502369374,
+      "duration_ms": 473.22733502369374,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "file_id": 1498090
+      }
+    },
+    {
+      "operation": "document_mapping",
+      "duration": 0.0014476350042968988,
+      "duration_ms": 1.4476350042968988,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {}
+    },
+    {
+      "operation": "file_claim_check",
+      "duration": 0.002160564996302128,
+      "duration_ms": 2.160564996302128,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "file_id": 1498091
+      }
+    },
+    {
+      "operation": "file_read",
+      "duration": 0.06733790301950648,
+      "duration_ms": 67.33790301950648,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "file_path": "/mnt/HomerShare/FBO Attachments/ACC-APG DIV A Competitive Opportunities as of 06 July 2023.pdf"
+      }
+    },
+    {
+      "operation": "text_chunk",
+      "duration": 0.0002769610146060586,
+      "duration_ms": 0.2769610146060586,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "text_length": 12739
+      }
+    },
+    {
+      "operation": "boilerplate_filter",
+      "duration": 0.14832491299603134,
+      "duration_ms": 148.32491299603134,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "chunk_count": 10
+      }
+    },
+    {
+      "operation": "embedding_model_encode",
+      "duration": 0.04363803198793903,
+      "duration_ms": 43.63803198793903,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "batch_size": 4,
+        "cache_hits": 6
+      }
+    },
+    {
+      "operation": "vector_store",
+      "duration": 0.002230777987278998,
+      "duration_ms": 2.230777987278998,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "vector_count": 10
+      }
+    },
+    {
+      "operation": "process_embedding_chunks_batch",
+      "duration": 0.21503384201787412,
+      "duration_ms": 215.03384201787412,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "total_chunks": 10
+      }
+    },
+    {
+      "operation": "embedding_generate",
+      "duration": 0.21519821201218292,
+      "duration_ms": 215.19821201218292,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "chunk_count": 10
+      }
+    },
+    {
+      "operation": "process_single_file",
+      "duration": 0.5945826640236191,
+      "duration_ms": 594.5826640236191,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "file_id": 1498091
+      }
+    },
+    {
+      "operation": "document_mapping",
+      "duration": 0.0015736519708298147,
+      "duration_ms": 1.5736519708298147,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {}
+    },
+    {
+      "operation": "file_claim_check",
+      "duration": 0.002339002036023885,
+      "duration_ms": 2.339002036023885,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "file_id": 1498092
+      }
+    },
+    {
+      "operation": "file_read",
+      "duration": 0.03333722800016403,
+      "duration_ms": 33.33722800016403,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "file_path": "/mnt/HomerShare/FBO Attachments/ACC-APG DIV A Competitive Opportunities as of 07 JUNE 2023.xlsx"
+      }
+    },
+    {
+      "operation": "text_chunk",
+      "duration": 0.0005953400395810604,
+      "duration_ms": 0.5953400395810604,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "text_length": 37024
+      }
+    },
+    {
+      "operation": "boilerplate_filter",
+      "duration": 0.49685659300303087,
+      "duration_ms": 496.85659300303087,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "chunk_count": 36
+      }
+    },
+    {
+      "operation": "embedding_model_encode",
+      "duration": 0.39872781396843493,
+      "duration_ms": 398.72781396843493,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "batch_size": 36,
+        "cache_hits": 0
+      }
+    },
+    {
+      "operation": "vector_store",
+      "duration": 0.003358110028784722,
+      "duration_ms": 3.358110028784722,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "vector_count": 36
+      }
+    },
+    {
+      "operation": "process_embedding_chunks_batch",
+      "duration": 1.0636559120030142,
+      "duration_ms": 1063.6559120030142,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "total_chunks": 36
+      }
+    },
+    {
+      "operation": "embedding_generate",
+      "duration": 1.0638142200186849,
+      "duration_ms": 1063.8142200186849,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "chunk_count": 36
+      }
+    },
+    {
+      "operation": "process_single_file",
+      "duration": 2.0590886439895257,
+      "duration_ms": 2059.0886439895257,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "file_id": 1498092
+      }
+    },
+    {
+      "operation": "document_mapping",
+      "duration": 0.0016885679797269404,
+      "duration_ms": 1.6885679797269404,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {}
+    },
+    {
+      "operation": "file_claim_check",
+      "duration": 0.0023477490176446736,
+      "duration_ms": 2.3477490176446736,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "file_id": 1498093
+      }
+    },
+    {
+      "operation": "file_read",
+      "duration": 0.03842592297587544,
+      "duration_ms": 38.42592297587544,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "file_path": "/mnt/HomerShare/FBO Attachments/ACC-APG DIV A Competitive Opportunities as of 03 APR 2023.xlsx"
+      }
+    },
+    {
+      "operation": "text_chunk",
+      "duration": 0.0006593400030396879,
+      "duration_ms": 0.6593400030396879,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "text_length": 41547
+      }
+    },
+    {
+      "operation": "boilerplate_filter",
+      "duration": 0.5616081379703246,
+      "duration_ms": 561.6081379703246,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "chunk_count": 41
+      }
+    },
+    {
+      "operation": "embedding_model_encode",
+      "duration": 0.0686728049768135,
+      "duration_ms": 68.6728049768135,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "batch_size": 7,
+        "cache_hits": 34
+      }
+    },
+    {
+      "operation": "vector_store",
+      "duration": 0.0032807239913381636,
+      "duration_ms": 3.2807239913381636,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "vector_count": 41
+      }
+    },
+    {
+      "operation": "process_embedding_chunks_batch",
+      "duration": 0.3274272640119307,
+      "duration_ms": 327.4272640119307,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "total_chunks": 41
+      }
+    },
+    {
+      "operation": "embedding_generate",
+      "duration": 0.3276206189766526,
+      "duration_ms": 327.6206189766526,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "chunk_count": 41
+      }
+    },
+    {
+      "operation": "process_single_file",
+      "duration": 1.4564311130088754,
+      "duration_ms": 1456.4311130088754,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "file_id": 1498093
+      }
+    },
+    {
+      "operation": "document_mapping",
+      "duration": 0.001709647011011839,
+      "duration_ms": 1.709647011011839,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {}
+    },
+    {
+      "operation": "file_claim_check",
+      "duration": 0.002689681015908718,
+      "duration_ms": 2.689681015908718,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "file_id": 1498094
+      }
+    },
+    {
+      "operation": "file_read",
+      "duration": 0.038420994009356946,
+      "duration_ms": 38.420994009356946,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "file_path": "/mnt/HomerShare/FBO Attachments/ACC-APG DIV A Competitive Opportunities as of 03 JAN 2023.xlsx"
+      }
+    },
+    {
+      "operation": "text_chunk",
+      "duration": 0.0006440420402213931,
+      "duration_ms": 0.6440420402213931,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "text_length": 39684
+      }
+    },
+    {
+      "operation": "boilerplate_filter",
+      "duration": 0.5409845380345359,
+      "duration_ms": 540.984538034536,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "chunk_count": 39
+      }
+    },
+    {
+      "operation": "embedding_model_encode",
+      "duration": 0.03311247401870787,
+      "duration_ms": 33.11247401870787,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "batch_size": 3,
+        "cache_hits": 36
+      }
+    },
+    {
+      "operation": "vector_store",
+      "duration": 0.0033628889941610396,
+      "duration_ms": 3.3628889941610396,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "vector_count": 39
+      }
+    },
+    {
+      "operation": "process_embedding_chunks_batch",
+      "duration": 0.3598762189503759,
+      "duration_ms": 359.8762189503759,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "total_chunks": 39
+      }
+    },
+    {
+      "operation": "embedding_generate",
+      "duration": 0.3600965450168587,
+      "duration_ms": 360.0965450168587,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "chunk_count": 39
+      }
+    },
+    {
+      "operation": "process_single_file",
+      "duration": 1.4281375579885207,
+      "duration_ms": 1428.1375579885207,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "file_id": 1498094
+      }
+    },
+    {
+      "operation": "document_mapping",
+      "duration": 0.0017106090090237558,
+      "duration_ms": 1.7106090090237558,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {}
+    },
+    {
+      "operation": "file_claim_check",
+      "duration": 0.0018253449816256762,
+      "duration_ms": 1.8253449816256762,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "file_id": 1498095
+      }
+    },
+    {
+      "operation": "file_read",
+      "duration": 0.3190638049854897,
+      "duration_ms": 319.0638049854897,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "file_path": "/mnt/HomerShare/FBO Attachments/ACC APG Division A Opportunities SAM for 29 June 2022.pdf"
+      }
+    },
+    {
+      "operation": "text_chunk",
+      "duration": 0.0004360700258985162,
+      "duration_ms": 0.4360700258985162,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "text_length": 19174
+      }
+    },
+    {
+      "operation": "boilerplate_filter",
+      "duration": 0.2310942150070332,
+      "duration_ms": 231.0942150070332,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "chunk_count": 16
+      }
+    },
+    {
+      "operation": "embedding_model_encode",
+      "duration": 0.1671567519661039,
+      "duration_ms": 167.1567519661039,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "batch_size": 16,
+        "cache_hits": 0
+      }
+    },
+    {
+      "operation": "vector_store",
+      "duration": 0.002484455006197095,
+      "duration_ms": 2.484455006197095,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "vector_count": 16
+      }
+    },
+    {
+      "operation": "process_embedding_chunks_batch",
+      "duration": 0.537817787961103,
+      "duration_ms": 537.817787961103,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "total_chunks": 16
+      }
+    },
+    {
+      "operation": "embedding_generate",
+      "duration": 0.5379819960216992,
+      "duration_ms": 537.9819960216992,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "chunk_count": 16
+      }
+    },
+    {
+      "operation": "process_single_file",
+      "duration": 1.3382127980003133,
+      "duration_ms": 1338.2127980003133,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "file_id": 1498095
+      }
+    },
+    {
+      "operation": "document_mapping",
+      "duration": 0.0016505359672009945,
+      "duration_ms": 1.6505359672009945,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {}
+    },
+    {
+      "operation": "file_claim_check",
+      "duration": 0.0024119900190271437,
+      "duration_ms": 2.4119900190271437,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "file_id": 1498096
+      }
+    },
+    {
+      "operation": "file_read",
+      "duration": 0.15712296002311632,
+      "duration_ms": 157.12296002311632,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "file_path": "/mnt/HomerShare/FBO Attachments/ACC APG Division A Opportunities SAM 29 March 2022.pdf"
+      }
+    },
+    {
+      "operation": "text_chunk",
+      "duration": 0.000440087984316051,
+      "duration_ms": 0.440087984316051,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "text_length": 19366
+      }
+    },
+    {
+      "operation": "boilerplate_filter",
+      "duration": 0.23972893500467762,
+      "duration_ms": 239.72893500467762,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "chunk_count": 16
+      }
+    },
+    {
+      "operation": "embedding_model_encode",
+      "duration": 0.1452960519818589,
+      "duration_ms": 145.2960519818589,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "batch_size": 15,
+        "cache_hits": 1
+      }
+    },
+    {
+      "operation": "vector_store",
+      "duration": 0.0023833949817344546,
+      "duration_ms": 2.3833949817344546,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "vector_count": 16
+      }
+    },
+    {
+      "operation": "process_embedding_chunks_batch",
+      "duration": 0.5354571250500157,
+      "duration_ms": 535.4571250500157,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "total_chunks": 16
+      }
+    },
+    {
+      "operation": "embedding_generate",
+      "duration": 0.535597398004029,
+      "duration_ms": 535.597398004029,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "chunk_count": 16
+      }
+    },
+    {
+      "operation": "process_single_file",
+      "duration": 1.1804957310087048,
+      "duration_ms": 1180.4957310087048,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "file_id": 1498096
+      }
+    },
+    {
+      "operation": "files_sequential_processing",
+      "duration": 12.031219058961142,
+      "duration_ms": 12031.219058961142,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "file_count": 10
+      }
+    },
+    {
+      "operation": "parallel_entity_collection",
+      "duration": 4.411296686157584e-05,
+      "duration_ms": 0.04411296686157584,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {}
+    },
+    {
+      "operation": "entity_filter_confidence",
+      "duration": 0.0004914149758405983,
+      "duration_ms": 0.49141497584059834,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {}
+    },
+    {
+      "operation": "entity_consolidation",
+      "duration": 0.0001821519690565765,
+      "duration_ms": 0.1821519690565765,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {}
+    },
+    {
+      "operation": "entity_storage_db",
+      "duration": 0.04056697298074141,
+      "duration_ms": 40.56697298074141,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "entity_count": 28
+      }
+    },
+    {
+      "operation": "process_opportunity_entities",
+      "duration": 0.04138101503485814,
+      "duration_ms": 41.38101503485814,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "entity_count": 291
+      }
+    },
+    {
+      "operation": "entity_storage",
+      "duration": 0.0414433220284991,
+      "duration_ms": 41.4433220284991,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "entity_count": 291
+      }
+    },
+    {
+      "operation": "process_single_opportunity",
+      "duration": 12.088473676994909,
+      "duration_ms": 12088.473676994909,
+      "thread_id": "ThreadPoolExecutor-0_3",
+      "metadata": {
+        "opportunity_id": "D6F5B7A0-3205-4087-9825-0004569657D7",
+        "file_count": 10
+      }
+    },
+    {
+      "operation": "cleanup_operations",
+      "duration": 3.6963161539752036,
+      "duration_ms": 3696.3161539752036,
+      "thread_id": "Thread-10 (process_embeddings_background)",
+      "metadata": {}
+    }
+  ]
+}
