@@ -9,7 +9,10 @@ import logging
 import time
 import threading
 import queue
+import numpy as np
 from typing import List, Dict, Set, Any, Optional, Tuple
+from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Optional imports with graceful fallbacks
 try:
@@ -23,8 +26,6 @@ try:
     TORCH_AVAILABLE = True
 except ImportError:
     TORCH_AVAILABLE = False
-from datetime import datetime
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Optional psutil import with graceful fallback
 try:
@@ -32,7 +33,6 @@ try:
     PSUTIL_AVAILABLE = True
 except ImportError:
     PSUTIL_AVAILABLE = False
-    # Keep this one fallback since psutil is commonly missing and we can work without it
 
 # Add the current directory to Python path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -65,8 +65,6 @@ from config import (
     VECTOR_INSERT_BATCH_SIZE,
     ENABLE_OPPORTUNITY_BATCH_COMMITS,
     ENABLE_PRODUCER_CONSUMER_ARCHITECTURE,
-    ENABLE_PARALLEL_ENTITY_EXTRACTION,
-    ENABLE_CHUNK_EMBEDDING_CACHE,
     ENABLE_EMBEDDING_MODEL_POOL,
     EMBEDDING_MODEL_POOL_SIZE,
     EMBEDDING_TIMEOUT_SECONDS,
@@ -78,10 +76,6 @@ from config import (
 # Optional imports with graceful fallbacks
 from pymilvus import connections, Collection, utility
 from sentence_transformers import SentenceTransformer
-
-# Phase 2 Optimization Imports
-from chunk_embedding_cache import get_global_cache, clear_global_cache
-from parallel_entity_extractor import get_global_extractor, shutdown_global_extractor
 
 # Ensure logs directory exists
 os.makedirs("logs", exist_ok=True)
@@ -128,6 +122,195 @@ class Document:
         if self.text_content:
             return len(self.text_content.encode('utf-8')) / (1024 * 1024)
         return 0.0
+
+class EntityExtractionQueue:
+    """
+    Asynchronous entity extraction queue that runs independently from main processing pipeline
+    """
+    
+    def __init__(self, entity_extractor, entity_manager, enable_entity_extraction: bool = True):
+        """
+        Initialize the entity extraction queue
+        
+        Args:
+            entity_extractor: The entity extractor instance
+            entity_manager: The entity manager for database operations
+            enable_entity_extraction: Whether entity extraction is enabled
+        """
+        self.entity_extractor = entity_extractor
+        self.entity_manager = entity_manager
+        self.enable_entity_extraction = enable_entity_extraction
+        
+        if not self.enable_entity_extraction:
+            logger.info("Entity extraction disabled - queue will not process tasks")
+            return
+        
+        # Entity extraction queue and workers
+        self.entity_queue = queue.Queue(maxsize=1000)  # Large queue for async processing
+        self.worker_count = 2  # Dedicated entity extraction workers
+        self.workers = []
+        self.shutdown_event = threading.Event()
+        
+        # Statistics
+        self.stats_lock = threading.Lock()
+        self.stats = {
+            'tasks_queued': 0,
+            'tasks_completed': 0,
+            'tasks_failed': 0,
+            'entities_extracted': 0
+        }
+        
+        # Start workers
+        self._start_workers()
+        logger.info(f"✅ EntityExtractionQueue initialized with {self.worker_count} workers")
+    
+    def _start_workers(self):
+        """Start entity extraction worker threads"""
+        for i in range(self.worker_count):
+            worker = threading.Thread(
+                target=self._entity_worker,
+                args=(i,),
+                name=f"EntityWorker-{i}",
+                daemon=True
+            )
+            worker.start()
+            self.workers.append(worker)
+    
+    def _entity_worker(self, worker_id: int):
+        """Entity extraction worker thread"""
+        logger.info(f"EntityWorker-{worker_id} started")
+        
+        while not self.shutdown_event.is_set():
+            try:
+                # Get task from queue with timeout
+                task = self.entity_queue.get(timeout=1.0)
+                
+                if task is None:  # Shutdown signal
+                    break
+                
+                # Process entity extraction task
+                self._process_entity_task(task, worker_id)
+                
+            except queue.Empty:
+                continue
+            except Exception as e:
+                logger.error(f"EntityWorker-{worker_id} error: {e}")
+                with self.stats_lock:
+                    self.stats['tasks_failed'] += 1
+            finally:
+                try:
+                    self.entity_queue.task_done()
+                except ValueError:
+                    pass
+        
+        logger.info(f"EntityWorker-{worker_id} shutdown")
+    
+    def _process_entity_task(self, task: Dict, worker_id: int):
+        """Process a single entity extraction task"""
+        try:
+            with time_operation('async_entity_extraction', {
+                'file_id': task.get('file_id'),
+                'text_length': len(task['text_content']),
+                'worker_id': worker_id
+            }):
+                # Extract entities
+                entities = self.entity_extractor.extract_entities(
+                    task['text_content'],
+                    task['opportunity_id'],
+                    task['content_type'],
+                    task.get('file_id')
+                )
+                
+                # Store entities if any were found
+                if entities:
+                    # Filter and consolidate entities
+                    filtered_entities = self._filter_entities_by_confidence(entities)
+                    if filtered_entities:
+                        stored_count = self.entity_manager.store_entities(filtered_entities)
+                        
+                        with self.stats_lock:
+                            self.stats['entities_extracted'] += stored_count
+                        
+                        logger.debug(f"EntityWorker-{worker_id}: Stored {stored_count} entities for {task['content_type']} {task.get('file_id', task['opportunity_id'])}")
+                
+                with self.stats_lock:
+                    self.stats['tasks_completed'] += 1
+                    
+        except Exception as e:
+            logger.error(f"EntityWorker-{worker_id}: Error processing entity task: {e}")
+            with self.stats_lock:
+                self.stats['tasks_failed'] += 1
+    
+    def _filter_entities_by_confidence(self, entities: List) -> List:
+        """Filter entities by confidence threshold"""
+        try:
+            from config import ENTITY_CONF_THRESHOLD
+            return [entity for entity in entities if entity.confidence_score >= ENTITY_CONF_THRESHOLD]
+        except ImportError:
+            return entities  # If no threshold configured, return all
+    
+    def submit_task(self, text_content: str, opportunity_id: str, content_type: str, file_id: int = None):
+        """
+        Submit an entity extraction task (non-blocking)
+        
+        Args:
+            text_content: Text to extract entities from
+            opportunity_id: Opportunity ID
+            content_type: Type of content ('document', 'description', etc.)
+            file_id: Optional file ID
+        """
+        if not self.enable_entity_extraction:
+            return
+        
+        # Skip very short text
+        if len(text_content.strip()) < 50:
+            return
+        
+        task = {
+            'text_content': text_content,
+            'opportunity_id': opportunity_id,
+            'content_type': content_type,
+            'file_id': file_id,
+            'submitted_at': time.time()
+        }
+        
+        try:
+            self.entity_queue.put_nowait(task)
+            with self.stats_lock:
+                self.stats['tasks_queued'] += 1
+            logger.debug(f"Entity extraction task queued for {content_type} {file_id or opportunity_id}")
+        except queue.Full:
+            logger.warning(f"Entity extraction queue full, dropping task for {content_type} {file_id or opportunity_id}")
+    
+    def get_stats(self) -> Dict:
+        """Get entity extraction statistics"""
+        with self.stats_lock:
+            return self.stats.copy()
+    
+    def shutdown(self, timeout: float = 30.0):
+        """Shutdown entity extraction queue"""
+        if not self.enable_entity_extraction:
+            return
+        
+        logger.info("Shutting down EntityExtractionQueue...")
+        
+        # Signal shutdown
+        self.shutdown_event.set()
+        
+        # Add shutdown sentinels
+        for _ in self.workers:
+            try:
+                self.entity_queue.put_nowait(None)
+            except queue.Full:
+                pass
+        
+        # Wait for workers to finish
+        for worker in self.workers:
+            worker.join(timeout=timeout)
+        
+        # Log final stats
+        final_stats = self.get_stats()
+        logger.info(f"EntityExtractionQueue shutdown complete. Final stats: {final_stats}")
 
 class ScalableEnhancedProcessor:
     """
@@ -198,35 +381,27 @@ class ScalableEnhancedProcessor:
         logger.info(f"   Embedding Batch Size: {self.batch_sizes['embedding_batch_size']}")
         logger.info(f"   Total Parallel Capacity: {self.opportunity_workers * self.file_workers_per_opportunity} concurrent operations")
         
-        # Phase 2 Optimization Setup - MUST be before setup_embeddings()
-        self.enable_parallel_entity_extraction = ENABLE_PARALLEL_ENTITY_EXTRACTION
-        self.enable_chunk_embedding_cache = ENABLE_CHUNK_EMBEDDING_CACHE
-        
-        # NOTE: Chunk cache will be initialized in setup_embeddings() after model is loaded
-        if self.enable_chunk_embedding_cache:
-            self.chunk_cache = None  # Will be set in setup_embeddings()
-            logger.info("✅ Phase 2: Chunk embedding cache enabled (will initialize after model load)")
-        else:
-            self.chunk_cache = None
-            
-        if self.enable_parallel_entity_extraction:
-            self.parallel_entity_extractor = get_global_extractor()
-            logger.info("✅ Phase 2: Parallel entity extraction enabled")
-        else:
-            self.parallel_entity_extractor = None
-        
         # Initialize components
         self.setup_milvus_connection()
         self.setup_sql_connection()
         self.setup_embeddings()
         
-        # Entity extraction setup
+        # Entity extraction setup (only if enabled)
         self.enable_entity_extraction = ENABLE_ENTITY_EXTRACTION
         if self.enable_entity_extraction:
             self.setup_entity_extraction()
+            # Initialize asynchronous entity extraction queue
+            self.entity_queue = EntityExtractionQueue(
+                self.entity_extractor, 
+                self.entity_manager, 
+                self.enable_entity_extraction
+            )
+            logger.info("✅ Entity extraction enabled with async queue")
         else:
             self.entity_extractor = None
             self.entity_manager = None
+            self.entity_queue = None
+            logger.info("❌ Entity extraction disabled")
         
         # Initialize processing components (always use config file for boilerplate path)
         boilerplate_docs_path = BOILERPLATE_DOCS_PATH
@@ -280,12 +455,6 @@ class ScalableEnhancedProcessor:
             'processing_time': 0.0,
             'peak_memory_mb': 0.0,
             'avg_cpu_percent': 0.0,
-            # Phase 2 statistics
-            'chunk_cache_hits': 0,
-            'chunk_cache_misses': 0,
-            'parallel_entity_tasks': 0,
-            'parallel_entity_successes': 0,
-            'parallel_entity_failures': 0,
             # Queue monitoring statistics
             'queue_max_size': 0,
             'queue_avg_size': 0.0,
@@ -425,11 +594,6 @@ class ScalableEnhancedProcessor:
                 self.use_pool = False
                 logger.info(f"Single-process embedding model initialized on {device}")
             
-            # Initialize chunk cache with embedding model AFTER model is loaded
-            if self.enable_chunk_embedding_cache:
-                self.chunk_cache = get_global_cache(self.embeddings)
-                logger.info("✅ Phase 2: Chunk embedding cache initialized with shared model")
-            
         except Exception as e:
             logger.error(f"Failed to load embedding model: {e}")
             raise
@@ -486,16 +650,57 @@ class ScalableEnhancedProcessor:
                 convert_to_tensor=False  # Keep as numpy arrays for consistency
             )
     
-    def _update_stats(self, key: str, increment: int = 1):
-        """Thread-safe statistics update with real-time progress callback"""
+    def _reset_stats(self):
+        """Reset all statistics for a new processing run"""
         with self.stats_lock:
+            self.stats = {
+                'opportunities_processed': 0,
+                'titles_embedded': 0,
+                'descriptions_embedded': 0,
+                'documents_embedded': 0,
+                'documents_skipped': 0,
+                'documents_already_processed': 0,  # Files skipped due to previous processing
+                'documents_race_condition_skipped': 0,  # Files skipped due to thread race conditions
+                'total_chunks_generated': 0,
+                'boilerplate_chunks_filtered': 0,
+                'entities_extracted': 0,
+                'errors': 0,
+                'processing_time': 0.0,
+                'peak_memory_mb': 0.0,
+                'avg_cpu_percent': 0.0,
+                # Queue monitoring statistics
+                'queue_max_size': 0,
+                'queue_avg_size': 0.0,
+                'queue_samples': 0,
+                'file_load_errors': 0,
+                'producer_throughput_mb_per_sec': 0.0
+            }
+            logger.debug("Statistics reset for new processing run")
+
+    def _update_stats(self, key: str, increment: int = 1):
+        """Thread-safe statistics update with task-specific tracking when available"""
+        with self.stats_lock:
+            # Update shared stats (for legacy compatibility)
             self.stats[key] += increment
-            # Call progress callback for opportunity completion updates
-            if key == 'opportunities_processed' and self.progress_callback:
-                try:
-                    self.progress_callback(self.stats['opportunities_processed'])
-                except Exception as e:
-                    logger.warning(f"Progress callback failed: {e}")
+            
+            # Update task-specific stats if available
+            if hasattr(self, 'task_specific_stats') and self.task_specific_stats is not None:
+                if key in self.task_specific_stats:
+                    self.task_specific_stats[key] += increment
+                
+                # Use task-specific counter for progress callback
+                if key == 'opportunities_processed' and self.progress_callback:
+                    try:
+                        self.progress_callback(self.task_specific_stats['opportunities_processed'])
+                    except Exception as e:
+                        logger.warning(f"Task-specific progress callback failed: {e}")
+            else:
+                # Fallback to shared stats for legacy compatibility
+                if key == 'opportunities_processed' and self.progress_callback:
+                    try:
+                        self.progress_callback(self.stats['opportunities_processed'])
+                    except Exception as e:
+                        logger.warning(f"Progress callback failed: {e}")
     
     def get_current_stats(self):
         """Get current processing statistics (thread-safe)"""
@@ -555,10 +760,30 @@ class ScalableEnhancedProcessor:
             if cursor:
                 cursor.close()
 
-    def process_scalable_batch_producer_consumer(self, start_row_id: int, end_row_id: int, replace_existing_records: bool = False):
+    def process_scalable_batch_producer_consumer(self, start_row_id: int, end_row_id: int, replace_existing_records: bool = False, task_id: str = None):
         """
         Process batch using producer/consumer architecture for optimal performance
         """
+        # Initialize task-specific stats if task_id is provided
+        if task_id:
+            # Create completely isolated stats for this task
+            self.task_specific_stats = {
+                'opportunities_processed': 0,
+                'documents_processed': 0,
+                'documents_skipped': 0,
+                'total_chunks_generated': 0,
+                'entities_extracted': 0,
+                'errors': 0
+            }
+            self.current_task_id = task_id
+            logger.info(f"🔧 Initialized task-specific stats for task {task_id}")
+        else:
+            self.task_specific_stats = None
+            self.current_task_id = None
+        
+        # Reset shared statistics for this processing run (for legacy compatibility)
+        self._reset_stats()
+        
         with time_operation('process_scalable_batch_producer_consumer', {'start_row': start_row_id, 'end_row': end_row_id}):
             start_time = time.time()
             logger.info(f"🚀 Starting producer/consumer processing for rows {start_row_id} to {end_row_id}")
@@ -703,7 +928,6 @@ class ScalableEnhancedProcessor:
             # Consumer worker function
             def consumer_worker(worker_id: int):
                 """Consumer worker that processes opportunities from the queue"""
-                opportunities_processed = 0
                 try:
                     while consumers_active.is_set():
                         try:
@@ -715,12 +939,8 @@ class ScalableEnhancedProcessor:
                                 logger.debug(f"Consumer {worker_id} received shutdown signal")
                                 break
                             
-                            # Process the opportunity
+                            # Process the opportunity (this handles the stats update)
                             self._process_opportunity_simplified(opportunity, replace_existing_records)
-                            opportunities_processed += 1
-                            
-                            if opportunities_processed % 5 == 0:
-                                logger.info(f"Consumer {worker_id}: {opportunities_processed} opportunities processed")
                             
                         except queue.Empty:
                             # Timeout occurred, check if we should continue
@@ -741,7 +961,7 @@ class ScalableEnhancedProcessor:
                     try:
                         logger.debug(f"Consumer {worker_id} performing final flush...")
                         self._flush_all_vector_collections()
-                        logger.info(f"Consumer {worker_id} finished: {opportunities_processed} opportunities processed")
+                        logger.info(f"Consumer {worker_id} finished processing")
                     except Exception as e:
                         add_error(f"Consumer {worker_id} final flush error: {e}")
             
@@ -768,6 +988,11 @@ class ScalableEnhancedProcessor:
             # Stop memory monitoring and cleanup
             self.stop_memory_monitoring()
             
+            # Entity extraction cleanup
+            if self.enable_entity_extraction and self.entity_queue:
+                logger.info("Shutting down entity extraction queue...")
+                self.entity_queue.shutdown(timeout=30.0)
+            
             # Final processing time
             processing_time = time.time() - start_time
             self.stats['processing_time'] = processing_time
@@ -783,24 +1008,42 @@ class ScalableEnhancedProcessor:
             print_summary()
             # Ensure logs directory exists for performance report
             os.makedirs("logs", exist_ok=True)
-            save_report(f"logs/performance_report_{start_row_id}_{end_row_id}.json")
+            # Use task_id for unique performance reports, fallback to row range if no task_id
+            logger.info(f"🔍 DEBUG: Performance report task_id='{task_id}', start_row_id={start_row_id}, end_row_id={end_row_id}")
+            if task_id:
+                report_filename = f"logs/performance_report_{task_id}.json"
+                logger.info(f"🔍 Task-specific performance report: {report_filename}")
+            else:
+                report_filename = f"logs/performance_report_{start_row_id}_{end_row_id}.json"
+                logger.info(f"🔍 Legacy performance report: {report_filename}")
+            save_report(report_filename)
             
             self._log_final_stats(processing_time)
             
-            # Return processing statistics
-            return {
-                'opportunities_processed': self.stats['opportunities_processed'],
-                'documents_embedded': self.stats['documents_embedded'],
-                'documents_skipped': self.stats['documents_skipped'],
-                'total_chunks_generated': self.stats['total_chunks_generated'],
-                'processing_time': processing_time,
-                'errors': self.stats['errors'] + len(processing_errors)
-            }
+            # Return processing statistics (use task-specific stats when available)
+            if hasattr(self, 'task_specific_stats') and self.task_specific_stats is not None:
+                stats_to_return = self.task_specific_stats.copy()
+                stats_to_return.update({
+                    'processing_time': processing_time,
+                    'errors': self.task_specific_stats['errors'] + len(processing_errors)
+                })
+                logger.info(f"🔍 Returning task-specific stats: {self.task_specific_stats['opportunities_processed']} opportunities")
+            else:
+                stats_to_return = {
+                    'opportunities_processed': self.stats['opportunities_processed'],
+                    'documents_embedded': self.stats['documents_embedded'],
+                    'documents_skipped': self.stats['documents_skipped'],
+                    'total_chunks_generated': self.stats['total_chunks_generated'],
+                    'processing_time': processing_time,
+                    'errors': self.stats['errors'] + len(processing_errors)
+                }
+                logger.info(f"🔍 Returning shared stats: {self.stats['opportunities_processed']} opportunities")
+            
+            return stats_to_return
 
     def _process_opportunity_simplified(self, opportunity: Opportunity, replace_existing_records: bool = False):
         """Process a single opportunity using simplified architecture (no intra-opportunity parallelization)"""
         with time_operation('process_opportunity_simplified', {'opportunity_id': opportunity.opportunity_id, 'document_count': len(opportunity.documents)}):
-            entities_to_store = []
             
             # Process title and description (fast, keep sequential)
             if opportunity.opportunity_id not in self.processed_opportunities:
@@ -824,43 +1067,34 @@ class ScalableEnhancedProcessor:
                         )
                         self._update_stats('descriptions_embedded', 1)
                     
-                    # Extract entities from description
-                    if self.enable_entity_extraction:
-                        try:
-                            desc_entities = self.entity_extractor.extract_entities(
-                                opportunity.description, 
-                                opportunity.opportunity_id, 
-                                'description'
-                            )
-                            entities_to_store.extend(desc_entities)
-                        except Exception as e:
-                            logger.error(f"Error extracting entities from description: {e}")
+                    # Submit description entity extraction asynchronously
+                    if self.enable_entity_extraction and self.entity_queue:
+                        self.entity_queue.submit_task(
+                            text_content=opportunity.description,
+                            opportunity_id=opportunity.opportunity_id,
+                            content_type='description'
+                        )
                 
                 self.processed_opportunities.add(opportunity.opportunity_id)
             
             # Process documents sequentially (simplified - no intra-opportunity parallelization)
             for document in opportunity.documents:
                 try:
-                    file_entities = self._process_single_file_simplified(
+                    # No longer collecting entities since they're processed asynchronously
+                    self._process_single_file_simplified(
                         document, 
                         opportunity.opportunity_id, 
                         opportunity.posted_date, 
                         replace_existing_records
                     )
-                    entities_to_store.extend(file_entities)
                 except Exception as e:
                     logger.error(f"Error processing document {document.file_location}: {e}")
                     self._update_stats('errors', 1)
             
-            # Process entities for this opportunity
-            if entities_to_store:
-                with time_operation('entity_storage', {'entity_count': len(entities_to_store)}):
-                    self._process_opportunity_entities(opportunity.opportunity_id, entities_to_store)
-            
             # Only increment progress counter after ALL processing is complete for this opportunity
             self._update_stats('opportunities_processed', 1)
 
-    def _process_single_file_simplified(self, document: Document, opportunity_id: str, posted_date: str, replace_existing_records: bool = False) -> List:
+    def _process_single_file_simplified(self, document: Document, opportunity_id: str, posted_date: str, replace_existing_records: bool = False):
         """Process a single document using simplified architecture"""
         if document.file_id is None:
             logger.warning(f"Skipping document with NULL file_id: {document.file_location}")
@@ -910,65 +1144,53 @@ class ScalableEnhancedProcessor:
                 
                 # Filter boilerplate
                 with time_operation('boilerplate_filter', {'chunk_count': len(chunks), 'file_size_bytes': document.file_size_bytes}):
-                    non_boilerplate_chunks = self.boilerplate_manager.filter_non_boilerplate_chunks(chunks)
-                    boilerplate_filtered = len(chunks) - len(non_boilerplate_chunks)
+                    chunks_with_embeddings = self.boilerplate_manager.filter_non_boilerplate_chunks(chunks)
+                    boilerplate_filtered = len(chunks) - len(chunks_with_embeddings)
                     self._update_stats('boilerplate_chunks_filtered', boilerplate_filtered)
                 
-                if non_boilerplate_chunks:
-                    # Process embeddings (primary GPU work)
-                    with time_operation('embedding_generate', {'chunk_count': len(non_boilerplate_chunks), 'file_size_bytes': document.file_size_bytes}):
+                if chunks_with_embeddings:
+                    # Process embeddings (primary GPU work) - using pre-computed embeddings from boilerplate filtering
+                    with time_operation('embedding_generate', {'chunk_count': len(chunks_with_embeddings), 'file_size_bytes': document.file_size_bytes}):
                         # Convert Document to file_info dict for compatibility
                         file_info = {
                             'file_id': document.file_id,
                             'file_location': document.file_location,
                             'file_size_bytes': document.file_size_bytes
                         }
-                        self._process_embedding_chunks_batch(non_boilerplate_chunks, file_info, opportunity_id, posted_date)
+                        self._process_embedding_chunks_batch(chunks_with_embeddings, file_info, opportunity_id, posted_date)
                         self._update_stats('documents_embedded', 1)
                 else:
                     self._update_stats('documents_skipped', 1)
                 
-                # Extract entities
-                entities = []
-                if self.enable_entity_extraction and len(text_content.strip()) > 50:
-                    try:
-                        entities = self.entity_extractor.extract_entities(
-                            text_content, 
-                            opportunity_id, 
-                            'document', 
-                            document.file_id
-                        )
-                    except Exception as e:
-                        logger.error(f"Error extracting entities from file {document.file_id}: {e}")
+                # Submit entity extraction task asynchronously (non-blocking)
+                if self.enable_entity_extraction and self.entity_queue and len(text_content.strip()) > 50:
+                    self.entity_queue.submit_task(
+                        text_content=text_content,
+                        opportunity_id=opportunity_id,
+                        content_type='document',
+                        file_id=document.file_id
+                    )
                 
-                return entities
+                return []  # No longer returning entities since processing is async
                 
             except Exception as e:
                 logger.error(f"Error processing file {document.file_location}: {e}")
                 return []
 
-    def process_scalable_batch(self, start_row_id: int, end_row_id: int, replace_existing_records: bool = False):
+    def process_scalable_batch(self, start_row_id: int, end_row_id: int, replace_existing_records: bool = False, task_id: str = None):
         """
-        Process batch with intelligent scaling based on system resources
+        Process batch using producer/consumer architecture for optimal performance
         """
-        # Check if producer/consumer architecture is enabled
-        try:
-            from config import ENABLE_PRODUCER_CONSUMER_ARCHITECTURE
-            use_producer_consumer = ENABLE_PRODUCER_CONSUMER_ARCHITECTURE
-        except ImportError:
-            use_producer_consumer = False
-        
-        if use_producer_consumer:
-            logger.info("Using producer/consumer architecture for optimal performance")
-            return self.process_scalable_batch_producer_consumer(start_row_id, end_row_id, replace_existing_records)
-        else:
-            logger.info("Using legacy data grouping architecture")
-            return self._process_scalable_batch_legacy(start_row_id, end_row_id, replace_existing_records)
+        logger.info("Using producer/consumer architecture for optimal performance")
+        return self.process_scalable_batch_producer_consumer(start_row_id, end_row_id, replace_existing_records, task_id)
 
-    def _process_scalable_batch_legacy(self, start_row_id: int, end_row_id: int, replace_existing_records: bool = False):
+    def _process_scalable_batch_legacy(self, start_row_id: int, end_row_id: int, replace_existing_records: bool = False, task_id: str = None):
         """
         Process batch with intelligent scaling based on system resources (legacy data grouping approach)
         """
+        # Reset statistics for this processing run
+        self._reset_stats()
+        
         with time_operation('process_scalable_batch', {'start_row': start_row_id, 'end_row': end_row_id}):
             start_time = time.time()
             logger.info(f"🚀 Starting scalable processing for rows {start_row_id} to {end_row_id}")
@@ -1010,22 +1232,10 @@ class ScalableEnhancedProcessor:
             with time_operation('cleanup_operations'):
                 self.stop_memory_monitoring()
                 
-                # Phase 2 cleanup
-                if self.enable_parallel_entity_extraction and self.parallel_entity_extractor:
-                    # Wait for any remaining entity extraction tasks
-                    pending_count = self.parallel_entity_extractor.get_pending_task_count()
-                    if pending_count > 0:
-                        logger.info(f"Waiting for {pending_count} pending entity extraction tasks...")
-                        self.parallel_entity_extractor.wait_for_all_tasks(timeout=30.0)
-                
-                # Print Phase 2 statistics
-                if self.enable_chunk_embedding_cache and self.chunk_cache:
-                    cache_stats = self.chunk_cache.get_stats()
-                    logger.info(f"📊 Chunk Cache Stats: {cache_stats['cache_size']} cached, {cache_stats['hit_rate']:.1%} hit rate")
-                
-                if self.enable_parallel_entity_extraction and self.parallel_entity_extractor:
-                    entity_stats = self.parallel_entity_extractor.get_stats()
-                    logger.info(f"📊 Parallel Entity Stats: {entity_stats['tasks_completed']} completed, {entity_stats['average_execution_time']:.3f}s avg")
+                # Entity extraction cleanup
+                if self.enable_entity_extraction and self.entity_queue:
+                    logger.info("Shutting down entity extraction queue...")
+                    self.entity_queue.shutdown(timeout=30.0)
                 
                 # Cleanup embedding model pool
                 if self.use_pool and self.embedding_pool:
@@ -1052,7 +1262,9 @@ class ScalableEnhancedProcessor:
             print_summary()
             # Ensure logs directory exists for performance report
             os.makedirs("logs", exist_ok=True)
-            save_report(f"logs/performance_report_{start_row_id}_{end_row_id}.json")
+            # Use task_id for unique performance reports, fallback to row range if no task_id
+            report_filename = f"logs/performance_report_{task_id}.json" if task_id else f"logs/performance_report_{start_row_id}_{end_row_id}.json"
+            save_report(report_filename)
         
         self._log_final_stats(processing_time)
         
@@ -1127,8 +1339,6 @@ class ScalableEnhancedProcessor:
     def _process_single_opportunity(self, opportunity_id: str, data: Dict, replace_existing_records: bool):
         """Process a single opportunity with file-level parallelization"""
         with time_operation('process_single_opportunity', {'opportunity_id': opportunity_id, 'file_count': len(data.get('files', []))}):
-            entities_to_store = []
-            desc_entity_task_id = None  # Initialize early to avoid scope issues
             
             # Process title and description (fast, keep sequential)
             if opportunity_id not in self.processed_opportunities:
@@ -1144,24 +1354,13 @@ class ScalableEnhancedProcessor:
                         if success:
                             self._update_stats('descriptions_embedded', 1)
                     
-                    # Extract entities from description
-                    if self.enable_entity_extraction:
-                        if self.enable_parallel_entity_extraction and self.parallel_entity_extractor:
-                            # PHASE 2: Submit entity extraction for parallel processing
-                            desc_entity_task_id = self.parallel_entity_extractor.submit_task(
-                                text_content=data['description'],
-                                opportunity_id=opportunity_id,
-                                content_type='description',
-                                file_id='description'
-                            )
-                            logger.debug(f"Submitted parallel entity extraction for description: {desc_entity_task_id}")
-                        else:
-                            # Sequential entity extraction (Phase 1)
-                            with time_operation('description_entity_extract'):
-                                desc_entities = self.entity_extractor.extract_entities(
-                                    data['description'], opportunity_id, 'description'
-                                )
-                                entities_to_store.extend(desc_entities)
+                    # Submit description entity extraction asynchronously
+                    if self.enable_entity_extraction and self.entity_queue:
+                        self.entity_queue.submit_task(
+                            data['description'], 
+                            opportunity_id, 
+                            'description'
+                        )
                 
                 self.processed_opportunities.add(opportunity_id)
             
@@ -1171,37 +1370,16 @@ class ScalableEnhancedProcessor:
                 
                 if file_worker_count > 1:
                     with time_operation('files_parallel_processing', {'file_count': len(data['files']), 'workers': file_worker_count}):
-                        entities_to_store.extend(
-                            self._process_files_parallel(data['files'], opportunity_id, data['posted_date'], file_worker_count, replace_existing_records)
-                        )
+                        self._process_files_parallel(data['files'], opportunity_id, data['posted_date'], file_worker_count, replace_existing_records)
                 else:
                     with time_operation('files_sequential_processing', {'file_count': len(data['files'])}):
-                        entities_to_store.extend(
-                            self._process_files_sequential(data['files'], opportunity_id, data['posted_date'], replace_existing_records)
-                        )
-            
-            # PHASE 2: Collect parallel entity extraction results
-            if self.enable_parallel_entity_extraction and self.parallel_entity_extractor and desc_entity_task_id:
-                with time_operation('parallel_entity_collection'):
-                    # Wait for description entity extraction to complete
-                    desc_result = self.parallel_entity_extractor.get_result(desc_entity_task_id, timeout=10.0)
-                    if desc_result and not desc_result.error:
-                        entities_to_store.extend(desc_result.entities)
-                        logger.debug(f"Collected {len(desc_result.entities)} entities from parallel description extraction")
-                    elif desc_result and desc_result.error:
-                        logger.warning(f"Parallel entity extraction failed for description: {desc_result.error}")
-            
-            # Process entities for this opportunity
-            if entities_to_store:
-                with time_operation('entity_storage', {'entity_count': len(entities_to_store)}):
-                    self._process_opportunity_entities(opportunity_id, entities_to_store)
+                        self._process_files_sequential(data['files'], opportunity_id, data['posted_date'], replace_existing_records)
             
             # Only increment progress counter after ALL processing is complete for this opportunity
             self._update_stats('opportunities_processed', 1)
     
-    def _process_files_parallel(self, files: List[Dict], opportunity_id: str, posted_date: str, worker_count: int, replace_existing_records: bool = False) -> List:
+    def _process_files_parallel(self, files: List[Dict], opportunity_id: str, posted_date: str, worker_count: int, replace_existing_records: bool = False):
         """Process files in parallel for a single opportunity"""
-        all_entities = []
         
         with ThreadPoolExecutor(max_workers=worker_count) as file_executor:
             file_futures = {
@@ -1218,30 +1396,23 @@ class ScalableEnhancedProcessor:
             for future in as_completed(file_futures):
                 file_info = file_futures[future]
                 try:
-                    file_entities = future.result()
-                    all_entities.extend(file_entities)
+                    future.result()  # No longer collecting entities
                 except Exception as e:
                     logger.error(f"Error processing file {file_info['file_location']}: {e}")
                     self._update_stats('errors', 1)
-        
-        return all_entities
     
-    def _process_files_sequential(self, files: List[Dict], opportunity_id: str, posted_date: str, replace_existing_records: bool = False) -> List:
+    def _process_files_sequential(self, files: List[Dict], opportunity_id: str, posted_date: str, replace_existing_records: bool = False):
         """Process files sequentially for a single opportunity"""
-        all_entities = []
         
         for file_info in files:
             if file_info.get('file_id') is None:
                 logger.warning(f"Skipping file with NULL file_id: {file_info.get('file_location')}")
                 continue
             try:
-                file_entities = self._process_single_file(file_info, opportunity_id, posted_date, replace_existing_records)
-                all_entities.extend(file_entities)
+                self._process_single_file(file_info, opportunity_id, posted_date, replace_existing_records)  # No longer collecting entities
             except Exception as e:
                 logger.error(f"Error processing file {file_info['file_location']}: {e}")
                 self._update_stats('errors', 1)
-        
-        return all_entities
     
     def _try_claim_file_for_processing(self, file_id: int, replace_existing_records: bool = False) -> bool:
         """
@@ -1305,7 +1476,7 @@ class ScalableEnhancedProcessor:
         if file_id in self.processed_files:
             return True
         return False
-    def _process_single_file(self, file_info: Dict, opportunity_id: str, posted_date: str, replace_existing_records: bool = False) -> List:
+    def _process_single_file(self, file_info: Dict, opportunity_id: str, posted_date: str, replace_existing_records: bool = False):
         """Process a single file for both embeddings and entities"""
         file_id = file_info.get('file_id')
         file_size_bytes = file_info.get('file_size_bytes')
@@ -1359,96 +1530,43 @@ class ScalableEnhancedProcessor:
                     # File is already marked as processed in session cache by _try_claim_file_for_processing()
                 else:
                     # Even if no embeddings, file is already marked as processed
-                    self._update_stats('documents_skipped', 1)                # Extract entities
-                entities = []
-                if self.enable_entity_extraction and len(text_content.strip()) > 50:
-                    if self.enable_parallel_entity_extraction and self.parallel_entity_extractor:
-                        # PHASE 2: Submit entity extraction for parallel processing
-                        entity_task_id = self.parallel_entity_extractor.submit_task(
-                            text_content=text_content,
-                            opportunity_id=opportunity_id,
-                            content_type='document',
-                            file_id=file_info['file_id']
-                        )
-                        
-                        # Wait for result (since we need to return entities)
-                        entity_result = self.parallel_entity_extractor.get_result(entity_task_id, timeout=15.0)
-                        if entity_result and not entity_result.error:
-                            entities = entity_result.entities
-                            logger.debug(f"Extracted {len(entities)} entities from file {file_info['file_id']} (parallel)")
-                        elif entity_result and entity_result.error:
-                            logger.warning(f"Parallel entity extraction failed for file {file_info['file_id']}: {entity_result.error}")
-                            entities = []
-                    else:
-                        # Sequential entity extraction (Phase 1)
-                        with time_operation('entity_extract', {'text_length': len(text_content), 'file_id': file_info.get('file_id', 'unknown'), 'file_size_bytes': file_size_bytes}):
-                            entities = self.entity_extractor.extract_entities(
-                                text_content, opportunity_id, 'document', file_info['file_id']
-                            )
-                            logger.debug(f"Extracted {len(entities)} entities from file {file_info['file_id']}")
+                    self._update_stats('documents_skipped', 1)                # Extract entities asynchronously
+                if self.enable_entity_extraction and self.entity_queue and len(text_content.strip()) > 50:
+                    self.entity_queue.submit_task(
+                        text_content, 
+                        opportunity_id, 
+                        'document', 
+                        file_info['file_id']
+                    )
                 
-                return entities
+                return []  # No longer returning entities since processing is async
                 
             except Exception as e:
                 logger.error(f"Error processing file {file_info['file_location']}: {e}")
                 return []
     
-    def _process_embedding_chunks_batch(self, chunks: List[Tuple], file_info: Dict, opportunity_id: str, posted_date: str):
-        """Process embedding chunks in optimal batches with PHASE 1 OPTIMIZATIONS"""
-        with time_operation('process_embedding_chunks_batch', {'total_chunks': len(chunks)}):
+    def _process_embedding_chunks_batch(self, chunks_with_embeddings: List[Tuple[str, np.ndarray]], file_info: Dict, opportunity_id: str, posted_date: str):
+        """Process embedding chunks in optimal batches with PHASE 1 OPTIMIZATIONS
+        
+        Args:
+            chunks_with_embeddings: List of (chunk_text, embedding) tuples from boilerplate filtering
+            file_info: File information dictionary
+            opportunity_id: Opportunity ID
+            posted_date: Posted date string
+        """
+        with time_operation('process_embedding_chunks_batch', {'total_chunks': len(chunks_with_embeddings)}):
             batch_size = self.batch_sizes['embedding_batch_size']
             
-            for i in range(0, len(chunks), batch_size):
-                batch_chunks = chunks[i:i + batch_size]
+            for i in range(0, len(chunks_with_embeddings), batch_size):
+                batch_chunks_with_embeddings = chunks_with_embeddings[i:i + batch_size]
                 
-                # PHASE 2 OPTIMIZATION: Chunk Embedding Cache
-                chunk_texts = [chunk for chunk, _ in batch_chunks]
+                # Extract embeddings that were already computed by boilerplate filtering
+                embeddings_batch = [embedding for _, embedding in batch_chunks_with_embeddings]
                 
-                if self.enable_chunk_embedding_cache and self.chunk_cache:
-                    # Check cache for existing embeddings
-                    cached_embeddings = []
-                    uncached_indices = []
-                    uncached_texts = []
-                    
-                    for idx, chunk_text in enumerate(chunk_texts):
-                        cached_embedding = self.chunk_cache.get_embedding(chunk_text)
-                        if cached_embedding is not None:
-                            cached_embeddings.append((idx, cached_embedding))
-                        else:
-                            uncached_indices.append(idx)
-                            uncached_texts.append(chunk_text)
-                    
-                    # Generate embeddings only for uncached chunks
-                    if uncached_texts:
-                        with time_operation('embedding_model_encode', {'batch_size': len(uncached_texts), 'cache_hits': len(cached_embeddings)}):
-                            new_embeddings = self.encode_with_pool(uncached_texts, normalize_embeddings=True, show_progress_bar=False)
-                        
-                        # Store new embeddings in cache
-                        for text, embedding in zip(uncached_texts, new_embeddings):
-                            self.chunk_cache.store_embedding(text, embedding)
-                    else:
-                        new_embeddings = []
-                    
-                    # Reconstruct full embeddings batch in original order
-                    embeddings_batch = [None] * len(chunk_texts)
-                    
-                    # Fill in cached embeddings
-                    for idx, embedding in cached_embeddings:
-                        embeddings_batch[idx] = embedding
-                    
-                    # Fill in new embeddings
-                    new_embedding_iter = iter(new_embeddings)
-                    for idx in uncached_indices:
-                        embeddings_batch[idx] = next(new_embedding_iter)
-                    
-                    logger.debug(f"Cache stats: {len(cached_embeddings)} hits, {len(uncached_texts)} misses")
-                else:
-                    # Standard embedding generation (no cache)
-                    with time_operation('embedding_model_encode', {'batch_size': len(chunk_texts)}):
-                        embeddings_batch = self.encode_with_pool(chunk_texts, normalize_embeddings=True, show_progress_bar=False)
+                logger.debug(f"Using pre-computed embeddings from boilerplate filtering: {len(embeddings_batch)} embeddings")
                 
                 # PHASE 1 OPTIMIZATION: True batch vector insertion
-                with time_operation('vector_store', {'vector_count': len(batch_chunks)}):
+                with time_operation('vector_store', {'vector_count': len(batch_chunks_with_embeddings)}):
                     try:
                         # Check if batch vector inserts are enabled
                         from config import ENABLE_BATCH_VECTOR_INSERTS
@@ -1459,15 +1577,15 @@ class ScalableEnhancedProcessor:
                     if enable_batch_inserts:
                         # OPTIMIZED: Batch all vectors into single insert operation
                         vectors_to_insert = []
-                        for j, ((chunk, _), embedding) in enumerate(zip(batch_chunks, embeddings_batch)):
+                        for j, ((chunk, embedding), computed_embedding) in enumerate(zip(batch_chunks_with_embeddings, embeddings_batch)):
                             vector_data = [
                                 file_info['file_id'],              # file_id
                                 opportunity_id,                    # opportunity_id
-                                embedding.tolist(),               # embedding
+                                computed_embedding.tolist(),      # embedding (use pre-computed)
                                 posted_date or datetime.now().isoformat(),  # posted_date
                                 1.0,                               # base_importance
                                 i + j,                             # chunk_index
-                                len(chunks),                       # total_chunks
+                                len(chunks_with_embeddings),       # total_chunks
                                 chunk[:2000],                      # text_content
                                 file_info.get('file_location', ''), # file_location
                                 ''                                 # section_type (empty for now)
@@ -1493,15 +1611,15 @@ class ScalableEnhancedProcessor:
                             logger.debug(f"Batch inserted {len(vectors_to_insert)} vectors: {result}")
                     else:
                         # FALLBACK: Original individual inserts (for comparison/debugging)
-                        for j, ((chunk, _), embedding) in enumerate(zip(batch_chunks, embeddings_batch)):
+                        for j, ((chunk, embedding), computed_embedding) in enumerate(zip(batch_chunks_with_embeddings, embeddings_batch)):
                             data = [
                                 [file_info['file_id']],
                                 [opportunity_id],
-                                [embedding.tolist()],
+                                [computed_embedding.tolist()],
                                 [posted_date or datetime.now().isoformat()],
                                 [1.0],  # base_importance
                                 [i + j],  # chunk_index
-                                [len(chunks)],  # total_chunks
+                                [len(chunks_with_embeddings)],  # total_chunks
                                 [chunk[:2000]],  # text_content
                                 [file_info.get('file_location', '')],  # file_location
                                 ['']  # section_type

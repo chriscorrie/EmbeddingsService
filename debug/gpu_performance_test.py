@@ -31,7 +31,6 @@ def run_gpu_performance_test():
     print(f'   Base batch size: {config.EMBEDDING_BATCH_SIZE}')
     print(f'   GPU multiplier: {config.GPU_BATCH_SIZE_MULTIPLIER}')
     print(f'   GPU batch size: {config.EMBEDDING_BATCH_SIZE * config.GPU_BATCH_SIZE_MULTIPLIER}')
-    print(f'   Cache size: {config.CHUNK_CACHE_SIZE}')
     print(f'   Large doc batch: {config.LARGE_DOC_EMBEDDING_BATCH_SIZE}')
     print(f'\\n🔥 Testing MAXIMUM performance with {len(test_texts)} sentences...')
     print(f'   Target batch size: {config.EMBEDDING_BATCH_SIZE * config.GPU_BATCH_SIZE_MULTIPLIER}')
@@ -58,7 +57,6 @@ def run_gpu_performance_test():
         'gpu_memory_mb': torch.cuda.memory_allocated() / 1024**2,
         'vram_usage_percent': (torch.cuda.memory_allocated() / (15.5 * 1024**3)) * 100,
         'embedding_shape': embeddings.shape,
-        'cache_size': config.CHUNK_CACHE_SIZE,
         'large_doc_batch': config.LARGE_DOC_EMBEDDING_BATCH_SIZE
     }
     

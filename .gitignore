@@ -122,3 +122,6 @@ transformers_cache/
 
 # PyTorch cache
 .torch/
+
+# Temporary analysis files
+temp/

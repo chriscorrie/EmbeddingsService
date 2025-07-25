@@ -164,6 +164,42 @@ curl http://localhost:5000/api/v1/status/processing-status
 ### Interactive Documentation
 Visit `http://localhost:5000/docs/` for full interactive API documentation with request/response examples.
 
+## Performance Testing Standards
+
+### Standard Test Parameters
+**CRITICAL**: For consistent performance testing and benchmarking, always use these parameters:
+
+```bash
+# Standard Performance Test - ALWAYS use these exact parameters
+curl -X POST http://localhost:5000/api/v1/embeddings/process-embeddings \
+  -H "Content-Type: application/json" \
+  -d '{
+    "start_row_id": 1, 
+    "end_row_id": 35, 
+    "reprocess": false
+  }'
+```
+
+**Testing Guidelines:**
+- **Row Range**: Always test rows 1-35 (35 opportunities for consistent sample size)
+- **Reprocess**: Always set to `false` for testing (avoids vector DB deletion overhead)
+- **Consistency**: Use identical parameters across all performance comparisons
+- **Baseline**: This gives ~35 opportunities with mixed document loads for realistic testing
+
+### Performance Comparison Workflow
+1. **Restart Service**: `sudo systemctl restart document-embedding-api`
+2. **Run Standard Test**: Use the exact curl command above
+3. **Monitor Logs**: `sudo journalctl -u document-embedding-api -f`
+4. **Check Performance Reports**: `logs/performance_report_*.json`
+5. **Document Results**: Record processing time and key metrics
+
+### Configuration Testing
+When testing different configurations (entity extraction, parallel processing, etc.):
+1. Update `config.py` settings
+2. Restart service to pick up changes
+3. Run standard test (rows 1-35, reprocess=false)
+4. Compare results using identical parameters
+
 ## Project Structure
 ```
 ├── production_rest_api_service.py      # Main API service

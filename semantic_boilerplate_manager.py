@@ -149,6 +149,7 @@ class SemanticBoilerplateManager:
     def filter_non_boilerplate_chunks(self, chunks: List[str]) -> List[Tuple[str, np.ndarray]]:
         """
         Filter out boilerplate chunks and return non-boilerplate chunks with embeddings
+        OPTIMIZED: Batch embedding generation + vectorized similarity computation
         
         Args:
             chunks: List of text chunks to filter
@@ -159,18 +160,43 @@ class SemanticBoilerplateManager:
         if not chunks:
             return []
             
+        # OPTIMIZATION 1: Batch generate ALL chunk embeddings at once
+        logger.debug(f"Batch generating embeddings for {len(chunks)} chunks...")
+        chunk_embeddings = self.embeddings_model.encode(chunks, normalize_embeddings=True, show_progress_bar=False)
+        
+        # If no boilerplate loaded, return all chunks
+        if self.boilerplate_matrix is None or len(self.boilerplate_embeddings_cache) == 0:
+            logger.debug("No boilerplate embeddings available - keeping all chunks")
+            return [(chunk, embedding) for chunk, embedding in zip(chunks, chunk_embeddings)]
+        
+        # OPTIMIZATION 2: Vectorized batch similarity computation
+        logger.debug(f"Computing similarity for {len(chunks)} chunks vs {len(self.boilerplate_embeddings_cache)} boilerplate chunks...")
+        try:
+            # Compute similarity between ALL chunks and ALL boilerplate embeddings at once
+            # Shape: (num_chunks, num_boilerplate_embeddings)
+            similarities = cosine_similarity(chunk_embeddings, self.boilerplate_matrix)
+            
+            # For each chunk, get the maximum similarity with any boilerplate
+            max_similarities = np.max(similarities, axis=1)  # Shape: (num_chunks,)
+            
+            # Determine which chunks are NOT boilerplate (vectorized comparison)
+            non_boilerplate_mask = max_similarities < self.similarity_threshold
+            
+        except Exception as e:
+            logger.error(f"Error in vectorized boilerplate similarity computation: {e}")
+            # Fallback: keep all chunks on error
+            non_boilerplate_mask = np.ones(len(chunks), dtype=bool)
+        
+        # Filter chunks and embeddings using the mask
         non_boilerplate_chunks = []
         boilerplate_count = 0
         
-        for chunk in chunks:
-            # Generate embedding for this chunk
-            chunk_embedding = self.embeddings_model.encode(chunk, normalize_embeddings=True)
-            
-            # Check if it's boilerplate
-            if not self.is_boilerplate_chunk(chunk_embedding):
-                non_boilerplate_chunks.append((chunk, chunk_embedding))
+        for i, (chunk, embedding) in enumerate(zip(chunks, chunk_embeddings)):
+            if non_boilerplate_mask[i]:
+                non_boilerplate_chunks.append((chunk, embedding))
             else:
                 boilerplate_count += 1
+                logger.debug(f"Chunk identified as boilerplate (similarity: {max_similarities[i]:.3f})")
         
         logger.debug(f"Filtered {boilerplate_count} boilerplate chunks, kept {len(non_boilerplate_chunks)} chunks")
         return non_boilerplate_chunks

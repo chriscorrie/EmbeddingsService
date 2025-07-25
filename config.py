@@ -25,7 +25,7 @@ SQL_CONNECTION_STRING = 'DRIVER={FreeTDS};SERVER=HOMER.THE-CORRIES.COM;PORT=1433
 EMBEDDING_MODEL = 'sentence-transformers/all-MiniLM-L6-v2'
 
 # Entity Extraction Configuration
-ENABLE_ENTITY_EXTRACTION = True  # System-wide setting for entity extraction
+ENABLE_ENTITY_EXTRACTION = False  # System-wide setting for entity extraction
 
 # Entity Extraction Confidence Thresholds
 ENTITY_PERSON_CONF_THRESHOLD = 0.8   # Person confidence threshold  
@@ -70,12 +70,7 @@ AGGRESSIVE_I_O_OPTIMIZATION = True          # Optimize for I/O bound workloads (
 # Phase 1 Optimization Flags - POST BOILERPLATE FIX
 ENABLE_VECTORIZED_SIMILARITIES = True       # Use vectorized boilerplate filtering (20x speedup)
 ENABLE_BATCH_VECTOR_INSERTS = True          # Batch database vector operations (3x speedup potential)
-ENABLE_PARALLEL_ENTITY_EXTRACTION = True    # Run entities parallel with embeddings (Phase 2)
-ENABLE_CHUNK_EMBEDDING_CACHE = False        # DISABLED: GPU is fast enough, cache fragments batches and wastes memory
-
-# Phase 2 Optimization Settings - MAXIMUM GPU CACHE
-CHUNK_CACHE_SIZE = 50000                     # Doubled cache for maximum GPU performance
-CHUNK_CACHE_SIMILARITY_THRESHOLD = 0.98     # Similarity threshold for considering chunks identical
+ENABLE_PARALLEL_ENTITY_EXTRACTION = False    # Run entities parallel with embeddings (Phase 2)
 ENTITY_WORKER_POOL_SIZE = 2                 # Further reduced since GPU dominates
 
 # Large Document Handling - MAXIMUM GPU PERFORMANCE

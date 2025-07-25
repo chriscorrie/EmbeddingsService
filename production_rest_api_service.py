@@ -201,7 +201,7 @@ processing_lock = threading.Lock()
 
 @dataclass
 class ProcessingTask:
-    """Data class for tracking processing tasks"""
+    """Data class for tracking processing tasks with completely isolated stats"""
     task_id: str
     status: str
     opportunities_processed: int = 0
@@ -210,6 +210,24 @@ class ProcessingTask:
     end_time: Optional[datetime] = None
     error_message: Optional[str] = None
     phase2_optimizations: str = "enabled"
+    # Process-specific isolated stats (completely separate from shared processor)
+    isolated_stats: Dict = None
+    
+    def __post_init__(self):
+        if self.isolated_stats is None:
+            self.isolated_stats = {
+                'opportunities_processed': 0,  # Task-specific counter
+                'documents_processed': 0,
+                'documents_skipped': 0,
+                'total_chunks_generated': 0,
+                'entities_extracted': 0,
+                'errors': 0
+            }
+    
+    def increment_progress(self):
+        """Increment the task-specific progress counter"""
+        self.isolated_stats['opportunities_processed'] += 1
+        self.opportunities_processed = self.isolated_stats['opportunities_processed']
 
 def create_error_response(error_message: str, error_code: str, status_code: int = 400, details: Optional[Dict] = None, request_id: Optional[str] = None):
     """Create a standardized error response with proper structure and logging"""
@@ -304,21 +322,42 @@ def process_embeddings_background(task_id: str, start_row_id: int, end_row_id: i
         
         logger.info(f"Starting background processing for task {task_id}: rows {start_row_id}-{end_row_id}, reprocess={reprocess}")
         
-        # Set up progress callback for real-time updates
-        def progress_callback(processed_count):
-            update_task_progress(task_id, processed_count)
+        # Create completely task-specific progress tracking (no shared processor dependency)
+        task_progress_tracker = {
+            'opportunities_processed': 0,
+            'documents_processed': 0,
+            'documents_skipped': 0,
+            'total_chunks_generated': 0,
+            'entities_extracted': 0,
+            'errors': 0
+        }
         
-        # Set the progress callback on the processor
-        processor.progress_callback = progress_callback
-        
-        # Start background progress monitor as backup
-        start_progress_monitor(task_id)
+        def task_specific_progress_callback(processed_count=None):
+            """Completely task-specific progress callback that doesn't rely on shared processor stats"""
+            with processing_lock:
+                if task_id in processing_tasks:
+                    task = processing_tasks[task_id]
+                    # Use task-specific counter instead of shared processor stats
+                    if processed_count is not None:
+                        task_progress_tracker['opportunities_processed'] = processed_count
+                    else:
+                        task_progress_tracker['opportunities_processed'] += 1
+                    
+                    # Update the task with isolated stats
+                    task.opportunities_processed = task_progress_tracker['opportunities_processed']
+                    task.isolated_stats.update(task_progress_tracker)
+                    
+                    logger.debug(f"Task {task_id} isolated progress: {task.opportunities_processed}/{task.total_opportunities}")
+
+        # Set the task-specific progress callback on the processor
+        processor.progress_callback = task_specific_progress_callback
         
         # Process the batch using Phase 2 optimized processor
         result = processor.process_scalable_batch(
             start_row_id, 
             end_row_id, 
-            replace_existing_records=reprocess
+            replace_existing_records=reprocess,
+            task_id=task_id
         )
         
         end_time = time.time()
@@ -371,7 +410,7 @@ class HealthCheck(Resource):
                 'timestamp': datetime.now().isoformat(),
                 'version': '2.0.0-phase2',
                 'processor_initialized': processor is not None,
-                'features': ['chunk_embedding_cache', 'parallel_entity_extraction', 'bulk_vector_operations', 'offline_processing', 'performance_monitoring']
+                'features': ['parallel_entity_extraction', 'bulk_vector_operations', 'offline_processing', 'performance_monitoring']
             }
         except Exception as e:
             logger.error(f"Health check failed: {e}")
@@ -503,20 +542,8 @@ class ProcessingStatusById(Resource):
                         remaining_opportunities = task.total_opportunities - task.opportunities_processed
                         estimated_remaining = remaining_opportunities / rate if rate > 0 else None
             
-            # Get additional processor stats if available
-            processor_stats = {}
-            if processor and task.status == "running":
-                try:
-                    current_stats = processor.get_current_stats()
-                    processor_stats = {
-                        'documents_processed': current_stats.get('documents_embedded', 0),
-                        'documents_skipped': current_stats.get('documents_skipped', 0),
-                        'total_chunks_generated': current_stats.get('total_chunks_generated', 0),
-                        'entities_extracted': current_stats.get('entities_extracted', 0),
-                        'errors': current_stats.get('errors', 0)
-                    }
-                except Exception as e:
-                    logger.debug(f"Could not get processor stats: {e}")
+            # Get task-specific isolated stats (completely separate from shared processor)
+            processor_stats = task.isolated_stats.copy() if task.isolated_stats else {}
             
             response = {
                 'task_id': task.task_id,
@@ -774,7 +801,7 @@ def legacy_health():
             'timestamp': datetime.now().isoformat(),
             'version': '2.0.0-phase2',
             'processor_initialized': processor is not None,
-            'features': ['chunk_embedding_cache', 'parallel_entity_extraction', 'bulk_vector_operations', 'offline_processing', 'performance_monitoring']
+            'features': ['parallel_entity_extraction', 'bulk_vector_operations', 'offline_processing', 'performance_monitoring']
         })
     except Exception as e:
         logger.error(f"Legacy health check failed: {e}")
