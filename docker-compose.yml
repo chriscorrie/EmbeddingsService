@@ -5,11 +5,15 @@ services:
     container_name: milvus-etcd
     image: quay.io/coreos/etcd:v3.5.5
     restart: unless-stopped
+    # HIGH-PERFORMANCE ALLOCATION: 2 cores, 4GB RAM
+    cpus: 2
+    mem_limit: 4g
     environment:
       - ETCD_AUTO_COMPACTION_MODE=revision
       - ETCD_AUTO_COMPACTION_RETENTION=1000
-      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+      - ETCD_QUOTA_BACKEND_BYTES=8589934592  # 8GB quota (increased from 4GB)
       - ETCD_SNAPSHOT_COUNT=50000
+      - ETCD_MAX_REQUEST_BYTES=33554432      # 32MB max request size
     volumes:
       - /mnt/NVME_5/milvus_data/etcd:/etcd
     command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
@@ -23,9 +27,15 @@ services:
     container_name: milvus-minio
     image: minio/minio:RELEASE.2023-03-20T20-16-18Z
     restart: unless-stopped
+    # HIGH-PERFORMANCE ALLOCATION: 4 cores, 8GB RAM
+    cpus: 4
+    mem_limit: 8g
     environment:
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin
+      # PERFORMANCE TUNING
+      MINIO_API_REQUESTS_MAX: 10000          # Higher concurrent requests
+      MINIO_API_REQUESTS_DEADLINE: 30s       # Longer timeout for large operations
     ports:
       - "9001:9001"
       - "9000:9000"
@@ -42,10 +52,40 @@ services:
     container_name: milvus-standalone
     image: milvusdb/milvus:v2.3.0
     restart: unless-stopped
+    # MAXIMUM PERFORMANCE ALLOCATION: 16 cores, 32GB RAM
+    cpus: 16
+    mem_limit: 32g
+    # SHARED MEMORY FOR HIGH-THROUGHPUT OPERATIONS
+    shm_size: 8g
     command: ["milvus", "run", "standalone"]
     environment:
       ETCD_ENDPOINTS: etcd:2379
       MINIO_ADDRESS: minio:9000
+      # HIGH-PERFORMANCE GPU WORKLOAD SETTINGS
+      # Memory Management
+      MILVUS_QUOTA_DATANODE_MEMORY_LOW_WATER_LEVEL: 0.7
+      MILVUS_QUOTA_DATANODE_MEMORY_HIGH_WATER_LEVEL: 0.9
+      MILVUS_QUOTA_QUERYNODE_MEMORY_LOW_WATER_LEVEL: 0.7
+      MILVUS_QUOTA_QUERYNODE_MEMORY_HIGH_WATER_LEVEL: 0.9
+      # Connection Limits (for 5K+ sentences/second)
+      MILVUS_PROXY_MAXNAMERESULTCOUNT: 32768
+      MILVUS_PROXY_MAXFIELDNUM: 256
+      MILVUS_PROXY_MAXDIMENSION: 32768
+      # Query Performance
+      MILVUS_QUERYNODE_CACHE_SIZE: 16                    # 16GB cache
+      MILVUS_QUERYNODE_CACHE_ENABLED: "true"
+      # Data Node Performance (for high insert rates)
+      MILVUS_DATANODE_FLUSH_INSERTBUFFERSIZE: 134217728  # 128MB flush buffer
+      MILVUS_DATANODE_FLUSH_DELETEDBUFFERSIZE: 67108864  # 64MB delete buffer
+      MILVUS_DATANODE_SYNC_PERIOD: 600                   # 10 min sync period
+      # Index Building Performance
+      MILVUS_INDEXNODE_SCHEDULER_BUILDPARALLEL: 8        # 8 parallel index builds
+      # Network Timeouts (for large operations)
+      MILVUS_GRPC_KEEPALIVE_TIME: 30
+      MILVUS_GRPC_KEEPALIVE_TIMEOUT: 5
+      MILVUS_GRPC_KEEPALIVE_PERMIT_WITHOUT_STREAM: "true"
+      MILVUS_GRPC_MAX_RECEIVE_MESSAGE_SIZE: 268435456     # 256MB messages
+      MILVUS_GRPC_MAX_SEND_MESSAGE_SIZE: 268435456        # 256MB messages
     volumes:
       - /mnt/NVME_5/milvus_data/milvus:/var/lib/milvus
     healthcheck:

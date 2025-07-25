@@ -11,7 +11,21 @@
 ### Performance Test Results
 
 #
+#
 #### Test 3: Maximum Performance Configuration
+- **Date**: 2025-07-24 22:45:56
+- **Batch Size**: 256 (256 × 1) - **0x larger than previous**
+- **Test Size**: 4000 sentences - **3.3x larger test**
+- **Performance**: **5269 sentences/second** 🚀
+- **Processing Time**: 0.76s
+- **GPU Memory**: 95.8 MB (0.6% of 15.5GB)
+- **Speedup vs baseline (377)**: **14.0x faster**
+- **Speedup vs optimized (1636)**: **3.2x faster**
+- **Cache Size**: 50000
+- **Large Doc Batch**: 1024
+- **Status**: Maximum performance achieved!
+
+\n### Test 3: Maximum Performance Configuration
 - **Date**: 2025-07-24 21:01:01
 - **Batch Size**: 16384 (512 × 32) - **4x larger than previous**
 - **Test Size**: 4000 sentences - **3.3x larger test**

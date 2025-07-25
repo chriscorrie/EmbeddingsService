@@ -131,10 +131,9 @@ def setup_vector_database():
                 logger.error(f"Failed to create collection {collection_name}: {e}")
                 raise
         
-        # Load collections into memory
-        for collection_name, collection in created_collections.items():
-            collection.load()
-            logger.info(f"Loaded collection into memory: {collection_name}")
+        # Note: Not loading collections into memory here - they will auto-load when data is inserted
+        # This avoids "AmbiguousIndexName" errors with multiple indexes
+        logger.info("Collections created with proper schemas and indexes")
         
         logger.info("Vector database setup complete")
         logger.info(f"Created collections: {list(created_collections.keys())}")

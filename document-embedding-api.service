@@ -1,5 +1,5 @@
 [Unit]
-Description=Document Embedding REST API Service v3 with Integrated OpenAPI Documentation
+Description=Document Embedding REST API Service with Integrated OpenAPI Documentation
 After=network.target docker.service
 Wants=network-online.target
 Requires=docker.service
@@ -9,14 +9,13 @@ Type=simple
 User=chris
 Group=chris
 WorkingDirectory=/home/chris/Projects/EmbeddingsService
-Environment=PATH=/home/chris/Projects/EmbeddingsService/venv/bin
-ExecStartPre=/home/chris/Projects/EmbeddingsService/startup.sh
-ExecStart=/home/chris/Projects/EmbeddingsService/venv/bin/python production_rest_api_service_v3.py
+Environment=PATH=/home/chris/Projects/EmbeddingsService/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=/home/chris/Projects/EmbeddingsService/venv/bin/python production_rest_api_service.py
 Restart=always
 RestartSec=10
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=document-embedding-api-v3
+SyslogIdentifier=document-embedding-api
 
 # Resource limits
 LimitNOFILE=65536

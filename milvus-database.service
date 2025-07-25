@@ -1,0 +1,18 @@
+[Unit]
+Description=Milvus Vector Database Service
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=forking
+User=chris
+Group=chris
+WorkingDirectory=/home/chris/Projects/EmbeddingsService
+ExecStart=/usr/bin/docker-compose up -d
+ExecStop=/usr/bin/docker-compose down
+ExecReload=/usr/bin/docker-compose restart
+TimeoutStartSec=300
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

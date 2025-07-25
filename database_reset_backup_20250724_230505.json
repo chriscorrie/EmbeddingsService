@@ -1,0 +1,21 @@
+{
+  "timestamp": "2025-07-24T23:05:05.894617",
+  "collections": {
+    "opportunity_titles": {
+      "entity_count": 100,
+      "schema": "{'auto_id': True, 'description': 'Opportunity Title Embeddings with Chunking', 'fields': [{'name': 'id', 'description': '', 'type': <DataType.INT64: 5>, 'is_primary': True, 'auto_id': True}, {'name': 'opportunity_id', 'description': '', 'type': <DataType.VARCHAR: 21>, 'params': {'max_length': 50}}, {'name': 'embedding', 'description': '', 'type': <DataType.FLOAT_VECTOR: 101>, 'params': {'dim': 384}}, {'name': 'posted_date', 'description': '', 'type': <DataType.VARCHAR: 21>, 'params': {'max_length': 50}}, {'name': 'importance_score', 'description': '', 'type': <DataType.FLOAT: 10>}, {'name': 'chunk_index', 'description': '', 'type': <DataType.INT32: 4>}, {'name': 'total_chunks', 'description': '', 'type': <DataType.INT32: 4>}, {'name': 'text_content', 'description': '', 'type': <DataType.VARCHAR: 21>, 'params': {'max_length': 2000}}], 'enable_dynamic_field': False}"
+    },
+    "opportunity_descriptions": {
+      "entity_count": 232,
+      "schema": "{'auto_id': True, 'description': 'Opportunity Description Embeddings with Chunking', 'fields': [{'name': 'id', 'description': '', 'type': <DataType.INT64: 5>, 'is_primary': True, 'auto_id': True}, {'name': 'opportunity_id', 'description': '', 'type': <DataType.VARCHAR: 21>, 'params': {'max_length': 50}}, {'name': 'embedding', 'description': '', 'type': <DataType.FLOAT_VECTOR: 101>, 'params': {'dim': 384}}, {'name': 'posted_date', 'description': '', 'type': <DataType.VARCHAR: 21>, 'params': {'max_length': 50}}, {'name': 'importance_score', 'description': '', 'type': <DataType.FLOAT: 10>}, {'name': 'chunk_index', 'description': '', 'type': <DataType.INT32: 4>}, {'name': 'total_chunks', 'description': '', 'type': <DataType.INT32: 4>}, {'name': 'text_content', 'description': '', 'type': <DataType.VARCHAR: 21>, 'params': {'max_length': 2000}}], 'enable_dynamic_field': False}"
+    },
+    "opportunity_documents": {
+      "entity_count": 2947,
+      "schema": "{'auto_id': True, 'description': 'Opportunity Document Embeddings with Chunking', 'fields': [{'name': 'id', 'description': '', 'type': <DataType.INT64: 5>, 'is_primary': True, 'auto_id': True}, {'name': 'file_id', 'description': '', 'type': <DataType.INT64: 5>}, {'name': 'opportunity_id', 'description': '', 'type': <DataType.VARCHAR: 21>, 'params': {'max_length': 50}}, {'name': 'embedding', 'description': '', 'type': <DataType.FLOAT_VECTOR: 101>, 'params': {'dim': 384}}, {'name': 'posted_date', 'description': '', 'type': <DataType.VARCHAR: 21>, 'params': {'max_length': 50}}, {'name': 'base_importance', 'description': '', 'type': <DataType.FLOAT: 10>}, {'name': 'chunk_index', 'description': '', 'type': <DataType.INT32: 4>}, {'name': 'total_chunks', 'description': '', 'type': <DataType.INT32: 4>}, {'name': 'text_content', 'description': '', 'type': <DataType.VARCHAR: 21>, 'params': {'max_length': 2000}}, {'name': 'file_location', 'description': '', 'type': <DataType.VARCHAR: 21>, 'params': {'max_length': 500}}, {'name': 'section_type', 'description': '', 'type': <DataType.VARCHAR: 21>, 'params': {'max_length': 50}}], 'enable_dynamic_field': False}"
+    },
+    "boilerplate": {
+      "entity_count": 2033,
+      "schema": "{'auto_id': True, 'description': 'Boilerplate Document Embeddings for Semantic Removal', 'fields': [{'name': 'id', 'description': '', 'type': <DataType.INT64: 5>, 'is_primary': True, 'auto_id': True}, {'name': 'boilerplate_file', 'description': '', 'type': <DataType.VARCHAR: 21>, 'params': {'max_length': 200}}, {'name': 'embedding', 'description': '', 'type': <DataType.FLOAT_VECTOR: 101>, 'params': {'dim': 384}}, {'name': 'chunk_index', 'description': '', 'type': <DataType.INT32: 4>}, {'name': 'total_chunks', 'description': '', 'type': <DataType.INT32: 4>}, {'name': 'text_content', 'description': '', 'type': <DataType.VARCHAR: 21>, 'params': {'max_length': 2000}}], 'enable_dynamic_field': False}"
+    }
+  }
+}

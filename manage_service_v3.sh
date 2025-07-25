@@ -2,7 +2,7 @@
 # Management script for Document Embedding API v3 Service
 
 SERVICE_NAME="document-embedding-api-v3"
-SERVICE_FILE="/home/chris/document_embedding_project_clean/${SERVICE_NAME}.service"
+SERVICE_FILE="/home/chris/Projects/EmbeddingsService/${SERVICE_NAME}.service"
 SYSTEMD_PATH="/etc/systemd/system/${SERVICE_NAME}.service"
 
 case "$1" in

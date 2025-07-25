@@ -49,7 +49,7 @@ def test_search_models_structure():
         print("\n✅ API Service Structure Validation:")
         
         # Check if the production API service imports work
-        from production_rest_api_service_v3 import app, api
+        from production_rest_api_service import app, api
         
         print("  ✓ Flask app and API imported successfully")
         

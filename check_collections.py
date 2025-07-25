@@ -19,12 +19,21 @@ def check_collections():
         for collection_name in sorted(collections):
             try:
                 collection = Collection(collection_name)
-                collection.load()
+                # DO NOT LOAD - just get count from metadata
                 
-                # Get entity count
+                # Get entity count without loading into memory
                 count = collection.num_entities
                 total_entities += count
-                print(f'{collection_name:30} : {count:,} entities')
+                
+                # Format large numbers nicely
+                if count > 1000000:
+                    count_str = f'{count:,} ({count/1000000:.1f}M)'
+                elif count > 1000:
+                    count_str = f'{count:,} ({count/1000:.1f}K)'
+                else:
+                    count_str = f'{count:,}'
+                    
+                print(f'{collection_name:30} : {count_str:>15} entities')
                 
             except Exception as e:
                 print(f'{collection_name:30} : ❌ Error - {e}')

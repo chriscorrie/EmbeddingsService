@@ -1,0 +1,2479 @@
+{
+  "summary": {
+    "total_operations": 251,
+    "total_time": 93.65779282399853,
+    "avg_time": 0.37313861682867944,
+    "total_time_ms": 93657.79282399853,
+    "avg_time_ms": 373.13861682867946
+  },
+  "by_operation": {
+    "sql_data_retrieval": {
+      "count": 1,
+      "total_time": 1.2398630869993212,
+      "avg_time": 1.2398630869993212,
+      "min_time": 1.2398630869993212,
+      "max_time": 1.2398630869993212,
+      "total_time_ms": 1239.8630869993212,
+      "avg_time_ms": 1239.8630869993212
+    },
+    "data_grouping": {
+      "count": 1,
+      "total_time": 4.044600063934922e-05,
+      "avg_time": 4.044600063934922e-05,
+      "min_time": 4.044600063934922e-05,
+      "max_time": 4.044600063934922e-05,
+      "total_time_ms": 0.04044600063934922,
+      "avg_time_ms": 0.04044600063934922
+    },
+    "title_embedding_generation": {
+      "count": 10,
+      "total_time": 0.0795272900013515,
+      "avg_time": 0.007952729000135151,
+      "min_time": 0.001950474999830476,
+      "max_time": 0.059740581000369275,
+      "total_time_ms": 79.5272900013515,
+      "avg_time_ms": 7.952729000135151
+    },
+    "title_vector_insert": {
+      "count": 10,
+      "total_time": 0.0148932740012242,
+      "avg_time": 0.00148932740012242,
+      "min_time": 0.0007283579998329515,
+      "max_time": 0.006404503999874578,
+      "total_time_ms": 14.8932740012242,
+      "avg_time_ms": 1.48932740012242
+    },
+    "title_embedding": {
+      "count": 10,
+      "total_time": 0.09627598999941256,
+      "avg_time": 0.009627598999941256,
+      "min_time": 0.0030477469990728423,
+      "max_time": 0.06642177399953653,
+      "total_time_ms": 96.27598999941256,
+      "avg_time_ms": 9.627598999941256
+    },
+    "description_embedding_generation": {
+      "count": 7,
+      "total_time": 0.01902960499683104,
+      "avg_time": 0.0027185149995472913,
+      "min_time": 0.002122627998687676,
+      "max_time": 0.005067361000328674,
+      "total_time_ms": 19.02960499683104,
+      "avg_time_ms": 2.7185149995472915
+    },
+    "description_vector_insert": {
+      "count": 7,
+      "total_time": 0.007506656997065875,
+      "avg_time": 0.0010723795710094106,
+      "min_time": 0.0007384780001302715,
+      "max_time": 0.0013713270000152988,
+      "total_time_ms": 7.506656997065875,
+      "avg_time_ms": 1.0723795710094106
+    },
+    "description_embedding": {
+      "count": 7,
+      "total_time": 0.02780304000225442,
+      "avg_time": 0.003971862857464917,
+      "min_time": 0.003210502000001725,
+      "max_time": 0.00628256500021962,
+      "total_time_ms": 27.80304000225442,
+      "avg_time_ms": 3.971862857464917
+    },
+    "file_claim_check": {
+      "count": 20,
+      "total_time": 0.0008663079952384578,
+      "avg_time": 4.331539976192289e-05,
+      "min_time": 1.8303999240742996e-05,
+      "max_time": 0.00040713499947742093,
+      "total_time_ms": 0.8663079952384578,
+      "avg_time_ms": 0.04331539976192289
+    },
+    "file_read": {
+      "count": 20,
+      "total_time": 4.019206806000511,
+      "avg_time": 0.20096034030002558,
+      "min_time": 3.7860998418182135e-05,
+      "max_time": 1.2079667630005133,
+      "total_time_ms": 4019.2068060005113,
+      "avg_time_ms": 200.96034030002556
+    },
+    "text_chunk": {
+      "count": 19,
+      "total_time": 0.013935982002294622,
+      "avg_time": 0.0007334727369628748,
+      "min_time": 3.273100082878955e-05,
+      "max_time": 0.0025850370002444834,
+      "total_time_ms": 13.935982002294622,
+      "avg_time_ms": 0.7334727369628748
+    },
+    "boilerplate_filter": {
+      "count": 19,
+      "total_time": 2.0376056200038875,
+      "avg_time": 0.10724240105283618,
+      "min_time": 2.0909999875584617e-05,
+      "max_time": 0.40219214699936856,
+      "total_time_ms": 2037.6056200038875,
+      "avg_time_ms": 107.24240105283619
+    },
+    "embedding_model_encode": {
+      "count": 17,
+      "total_time": 0.5169410010039428,
+      "avg_time": 0.030408294176702516,
+      "min_time": 0.0034878040005423827,
+      "max_time": 0.11089646500113304,
+      "total_time_ms": 516.9410010039428,
+      "avg_time_ms": 30.408294176702515
+    },
+    "vector_store": {
+      "count": 18,
+      "total_time": 0.03613159099404584,
+      "avg_time": 0.0020073106107803243,
+      "min_time": 0.0013048119999439223,
+      "max_time": 0.004073443999004667,
+      "total_time_ms": 36.13159099404584,
+      "avg_time_ms": 2.0073106107803245
+    },
+    "process_embedding_chunks_batch": {
+      "count": 18,
+      "total_time": 13.311886561999927,
+      "avg_time": 0.7395492534444403,
+      "min_time": 0.001876366000942653,
+      "max_time": 3.2373683490004623,
+      "total_time_ms": 13311.886561999927,
+      "avg_time_ms": 739.5492534444403
+    },
+    "embedding_generate": {
+      "count": 18,
+      "total_time": 13.313612768000894,
+      "avg_time": 0.7396451537778275,
+      "min_time": 0.0019298959996376652,
+      "max_time": 3.2374733060005383,
+      "total_time_ms": 13313.612768000894,
+      "avg_time_ms": 739.6451537778274
+    },
+    "process_single_file": {
+      "count": 20,
+      "total_time": 19.415764587000012,
+      "avg_time": 0.9707882293500006,
+      "min_time": 0.0013582020001194905,
+      "max_time": 4.51228123600049,
+      "total_time_ms": 19415.764587000012,
+      "avg_time_ms": 970.7882293500006
+    },
+    "files_sequential_processing": {
+      "count": 6,
+      "total_time": 19.4205453809991,
+      "avg_time": 3.23675756349985,
+      "min_time": 0.23495579900009034,
+      "max_time": 8.220472938999592,
+      "total_time_ms": 19420.5453809991,
+      "avg_time_ms": 3236.75756349985
+    },
+    "parallel_entity_collection": {
+      "count": 7,
+      "total_time": 0.009719944000607939,
+      "avg_time": 0.0013885634286582768,
+      "min_time": 2.9314998755580746e-05,
+      "max_time": 0.009503876999588101,
+      "total_time_ms": 9.719944000607939,
+      "avg_time_ms": 1.3885634286582769
+    },
+    "process_single_opportunity": {
+      "count": 10,
+      "total_time": 19.5720543239986,
+      "avg_time": 1.95720543239986,
+      "min_time": 0.0033057919990824303,
+      "max_time": 8.246014571999694,
+      "total_time_ms": 19572.0543239986,
+      "avg_time_ms": 1957.20543239986
+    },
+    "entity_filter_confidence": {
+      "count": 1,
+      "total_time": 8.998900011647493e-05,
+      "avg_time": 8.998900011647493e-05,
+      "min_time": 8.998900011647493e-05,
+      "max_time": 8.998900011647493e-05,
+      "total_time_ms": 0.08998900011647493,
+      "avg_time_ms": 0.08998900011647493
+    },
+    "entity_consolidation": {
+      "count": 1,
+      "total_time": 8.667300062370487e-05,
+      "avg_time": 8.667300062370487e-05,
+      "min_time": 8.667300062370487e-05,
+      "max_time": 8.667300062370487e-05,
+      "total_time_ms": 0.08667300062370487,
+      "avg_time_ms": 0.08667300062370487
+    },
+    "entity_storage_db": {
+      "count": 1,
+      "total_time": 0.015613538000252447,
+      "avg_time": 0.015613538000252447,
+      "min_time": 0.015613538000252447,
+      "max_time": 0.015613538000252447,
+      "total_time_ms": 15.613538000252447,
+      "avg_time_ms": 15.613538000252447
+    },
+    "process_opportunity_entities": {
+      "count": 1,
+      "total_time": 0.01589430599960906,
+      "avg_time": 0.01589430599960906,
+      "min_time": 0.01589430599960906,
+      "max_time": 0.01589430599960906,
+      "total_time_ms": 15.89430599960906,
+      "avg_time_ms": 15.89430599960906
+    },
+    "entity_storage": {
+      "count": 1,
+      "total_time": 0.015943067000989686,
+      "avg_time": 0.015943067000989686,
+      "min_time": 0.015943067000989686,
+      "max_time": 0.015943067000989686,
+      "total_time_ms": 15.943067000989686,
+      "avg_time_ms": 15.943067000989686
+    },
+    "cleanup_operations": {
+      "count": 1,
+      "total_time": 0.4569549879997794,
+      "avg_time": 0.4569549879997794,
+      "min_time": 0.4569549879997794,
+      "max_time": 0.4569549879997794,
+      "total_time_ms": 456.9549879997794,
+      "avg_time_ms": 456.9549879997794
+    }
+  },
+  "by_category": {
+    "file_io": {
+      "count": 20,
+      "total_time": 4.019206806000511,
+      "percentage": 4.291374678830403,
+      "operations": [
+        "file_read"
+      ]
+    },
+    "processing": {
+      "count": 37,
+      "total_time": 13.327548750003189,
+      "percentage": 14.230047866970644,
+      "operations": [
+        "embedding_generate",
+        "text_chunk"
+      ]
+    },
+    "database": {
+      "count": 18,
+      "total_time": 0.03613159099404584,
+      "percentage": 0.03857830715906815,
+      "operations": [
+        "vector_store"
+      ]
+    },
+    "comparison": {
+      "count": 19,
+      "total_time": 2.0376056200038875,
+      "percentage": 2.175585777291325,
+      "operations": [
+        "boilerplate_filter"
+      ]
+    }
+  },
+  "bottlenecks": [
+    {
+      "operation": "process_single_opportunity",
+      "total_time": 19.5720543239986,
+      "percentage": 20.897411452753698,
+      "avg_time_ms": 1957.20543239986
+    },
+    {
+      "operation": "files_sequential_processing",
+      "total_time": 19.4205453809991,
+      "percentage": 20.735642807101097,
+      "avg_time_ms": 3236.75756349985
+    },
+    {
+      "operation": "process_single_file",
+      "total_time": 19.415764587000012,
+      "percentage": 20.730538272972186,
+      "avg_time_ms": 970.7882293500006
+    },
+    {
+      "operation": "embedding_generate",
+      "total_time": 13.313612768000894,
+      "percentage": 14.215168184691047,
+      "avg_time_ms": 739.6451537778274
+    },
+    {
+      "operation": "process_embedding_chunks_batch",
+      "total_time": 13.311886561999927,
+      "percentage": 14.21332508552234,
+      "avg_time_ms": 739.5492534444403
+    }
+  ],
+  "threads_used": [
+    "Thread-28 (process_embeddings_background)"
+  ],
+  "raw_timings": [
+    {
+      "operation": "sql_data_retrieval",
+      "duration": 1.2398630869993212,
+      "duration_ms": 1239.8630869993212,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "row_count": 9
+      }
+    },
+    {
+      "operation": "data_grouping",
+      "duration": 4.044600063934922e-05,
+      "duration_ms": 0.04044600063934922,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "title_embedding_generation",
+      "duration": 0.059740581000369275,
+      "duration_ms": 59.740581000369275,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "title_vector_insert",
+      "duration": 0.006404503999874578,
+      "duration_ms": 6.404503999874578,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "title_embedding",
+      "duration": 0.06642177399953653,
+      "duration_ms": 66.42177399953653,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "description_embedding_generation",
+      "duration": 0.002524242998333648,
+      "duration_ms": 2.524242998333648,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "description_vector_insert",
+      "duration": 0.0013713270000152988,
+      "duration_ms": 1.3713270000152988,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "description_embedding",
+      "duration": 0.004078734000358963,
+      "duration_ms": 4.078734000358963,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "file_claim_check",
+      "duration": 2.8974000088055618e-05,
+      "duration_ms": 0.028974000088055618,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_id": 1500867
+      }
+    },
+    {
+      "operation": "file_read",
+      "duration": 0.5045662000011362,
+      "duration_ms": 504.56620000113617,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_path": "/mnt/HomerShare/FBO Attachments/36C24623B0066.docx"
+      }
+    },
+    {
+      "operation": "text_chunk",
+      "duration": 4.7809000534471124e-05,
+      "duration_ms": 0.047809000534471124,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "text_length": 350
+      }
+    },
+    {
+      "operation": "boilerplate_filter",
+      "duration": 0.003827812000963604,
+      "duration_ms": 3.827812000963604,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "chunk_count": 1
+      }
+    },
+    {
+      "operation": "embedding_model_encode",
+      "duration": 0.0034878040005423827,
+      "duration_ms": 3.4878040005423827,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "batch_size": 1,
+        "cache_hits": 0
+      }
+    },
+    {
+      "operation": "vector_store",
+      "duration": 0.0018963029997394187,
+      "duration_ms": 1.8963029997394187,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "vector_count": 1
+      }
+    },
+    {
+      "operation": "process_embedding_chunks_batch",
+      "duration": 0.005660766999426414,
+      "duration_ms": 5.660766999426414,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "total_chunks": 1
+      }
+    },
+    {
+      "operation": "embedding_generate",
+      "duration": 0.005737030000091181,
+      "duration_ms": 5.737030000091181,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "chunk_count": 1
+      }
+    },
+    {
+      "operation": "process_single_file",
+      "duration": 0.5177819620002992,
+      "duration_ms": 517.7819620002992,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_id": 1500867
+      }
+    },
+    {
+      "operation": "files_sequential_processing",
+      "duration": 0.5179415920010797,
+      "duration_ms": 517.9415920010797,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_count": 1
+      }
+    },
+    {
+      "operation": "parallel_entity_collection",
+      "duration": 4.845100011152681e-05,
+      "duration_ms": 0.04845100011152681,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "process_single_opportunity",
+      "duration": 0.5889020650010934,
+      "duration_ms": 588.9020650010934,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "opportunity_id": "89BBE3D8-00B5-4EC3-B303-0001D801AB9A",
+        "file_count": 1
+      }
+    },
+    {
+      "operation": "title_embedding_generation",
+      "duration": 0.0022694740000588354,
+      "duration_ms": 2.2694740000588354,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "title_vector_insert",
+      "duration": 0.0010949169991363306,
+      "duration_ms": 1.0949169991363306,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "title_embedding",
+      "duration": 0.0035447709997242782,
+      "duration_ms": 3.5447709997242782,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "process_single_opportunity",
+      "duration": 0.003612167000028421,
+      "duration_ms": 3.612167000028421,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "opportunity_id": "02F224E0-5101-4D76-A4D6-0002B6D9AAD3",
+        "file_count": 0
+      }
+    },
+    {
+      "operation": "title_embedding_generation",
+      "duration": 0.0020263879996491596,
+      "duration_ms": 2.0263879996491596,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "title_vector_insert",
+      "duration": 0.00105457100107742,
+      "duration_ms": 1.05457100107742,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "title_embedding",
+      "duration": 0.003245257999878959,
+      "duration_ms": 3.245257999878959,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "process_single_opportunity",
+      "duration": 0.0033057919990824303,
+      "duration_ms": 3.3057919990824303,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "opportunity_id": "B27E51E4-7539-4772-8E86-000362CA96E5",
+        "file_count": 0
+      }
+    },
+    {
+      "operation": "title_embedding_generation",
+      "duration": 0.002116596999258036,
+      "duration_ms": 2.116596999258036,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "title_vector_insert",
+      "duration": 0.0008787110000412213,
+      "duration_ms": 0.8787110000412213,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "title_embedding",
+      "duration": 0.0031575730008626124,
+      "duration_ms": 3.1575730008626124,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "description_embedding_generation",
+      "duration": 0.002122627998687676,
+      "duration_ms": 2.122627998687676,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "description_vector_insert",
+      "duration": 0.0010832950010808418,
+      "duration_ms": 1.0832950010808418,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "description_embedding",
+      "duration": 0.003374230000190437,
+      "duration_ms": 3.374230000190437,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "file_claim_check",
+      "duration": 3.1719999242341146e-05,
+      "duration_ms": 0.031719999242341146,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_id": 1498092
+      }
+    },
+    {
+      "operation": "file_read",
+      "duration": 0.033763220000764704,
+      "duration_ms": 33.763220000764704,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_path": "/mnt/HomerShare/FBO Attachments/ACC-APG DIV A Competitive Opportunities as of 07 JUNE 2023.xlsx"
+      }
+    },
+    {
+      "operation": "text_chunk",
+      "duration": 0.0005894969999644672,
+      "duration_ms": 0.5894969999644672,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "text_length": 37024
+      }
+    },
+    {
+      "operation": "boilerplate_filter",
+      "duration": 0.11028571499991813,
+      "duration_ms": 110.28571499991813,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "chunk_count": 36
+      }
+    },
+    {
+      "operation": "embedding_model_encode",
+      "duration": 0.032340787000066484,
+      "duration_ms": 32.340787000066484,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "batch_size": 36,
+        "cache_hits": 0
+      }
+    },
+    {
+      "operation": "vector_store",
+      "duration": 0.002097460999721079,
+      "duration_ms": 2.097460999721079,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "vector_count": 36
+      }
+    },
+    {
+      "operation": "process_embedding_chunks_batch",
+      "duration": 0.15212100300050224,
+      "duration_ms": 152.12100300050224,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "total_chunks": 36
+      }
+    },
+    {
+      "operation": "embedding_generate",
+      "duration": 0.15221387699966726,
+      "duration_ms": 152.21387699966726,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "chunk_count": 36
+      }
+    },
+    {
+      "operation": "process_single_file",
+      "duration": 0.2978456359996926,
+      "duration_ms": 297.8456359996926,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_id": 1498092
+      }
+    },
+    {
+      "operation": "file_claim_check",
+      "duration": 2.2621999960392714e-05,
+      "duration_ms": 0.022621999960392714,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_id": 1498095
+      }
+    },
+    {
+      "operation": "file_read",
+      "duration": 0.14473562499915715,
+      "duration_ms": 144.73562499915715,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_path": "/mnt/HomerShare/FBO Attachments/ACC APG Division A Opportunities SAM for 29 June 2022.pdf"
+      }
+    },
+    {
+      "operation": "text_chunk",
+      "duration": 0.0003852540012303507,
+      "duration_ms": 0.3852540012303507,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "text_length": 19174
+      }
+    },
+    {
+      "operation": "boilerplate_filter",
+      "duration": 0.050880422999398434,
+      "duration_ms": 50.880422999398434,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "chunk_count": 16
+      }
+    },
+    {
+      "operation": "embedding_model_encode",
+      "duration": 0.015404956000566017,
+      "duration_ms": 15.404956000566017,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "batch_size": 16,
+        "cache_hits": 0
+      }
+    },
+    {
+      "operation": "vector_store",
+      "duration": 0.0015479889989364892,
+      "duration_ms": 1.5479889989364892,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "vector_count": 16
+      }
+    },
+    {
+      "operation": "process_embedding_chunks_batch",
+      "duration": 0.11336881799979892,
+      "duration_ms": 113.36881799979892,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "total_chunks": 16
+      }
+    },
+    {
+      "operation": "embedding_generate",
+      "duration": 0.1134670230003394,
+      "duration_ms": 113.4670230003394,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "chunk_count": 16
+      }
+    },
+    {
+      "operation": "process_single_file",
+      "duration": 0.3103282809988741,
+      "duration_ms": 310.3282809988741,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_id": 1498095
+      }
+    },
+    {
+      "operation": "file_claim_check",
+      "duration": 2.211199898738414e-05,
+      "duration_ms": 0.02211199898738414,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_id": 1498096
+      }
+    },
+    {
+      "operation": "file_read",
+      "duration": 0.1454509399991366,
+      "duration_ms": 145.4509399991366,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_path": "/mnt/HomerShare/FBO Attachments/ACC APG Division A Opportunities SAM 29 March 2022.pdf"
+      }
+    },
+    {
+      "operation": "text_chunk",
+      "duration": 0.00040056299985735677,
+      "duration_ms": 0.40056299985735677,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "text_length": 19366
+      }
+    },
+    {
+      "operation": "boilerplate_filter",
+      "duration": 0.05112560400084476,
+      "duration_ms": 51.12560400084476,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "chunk_count": 16
+      }
+    },
+    {
+      "operation": "embedding_model_encode",
+      "duration": 0.014334744999359827,
+      "duration_ms": 14.334744999359827,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "batch_size": 15,
+        "cache_hits": 1
+      }
+    },
+    {
+      "operation": "vector_store",
+      "duration": 0.0015249049993144581,
+      "duration_ms": 1.524904999314458,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "vector_count": 16
+      }
+    },
+    {
+      "operation": "process_embedding_chunks_batch",
+      "duration": 0.13288760400064348,
+      "duration_ms": 132.88760400064348,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "total_chunks": 16
+      }
+    },
+    {
+      "operation": "embedding_generate",
+      "duration": 0.13297607999993488,
+      "duration_ms": 132.97607999993488,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "chunk_count": 16
+      }
+    },
+    {
+      "operation": "process_single_file",
+      "duration": 0.3317610140002216,
+      "duration_ms": 331.7610140002216,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_id": 1498096
+      }
+    },
+    {
+      "operation": "file_claim_check",
+      "duration": 2.3343998691416346e-05,
+      "duration_ms": 0.023343998691416346,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_id": 1498090
+      }
+    },
+    {
+      "operation": "file_read",
+      "duration": 0.279036363999694,
+      "duration_ms": 279.036363999694,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_path": "/mnt/HomerShare/FBO Attachments/ACC-APG DIV A Competitive Opportunities as of 30 August 2023.pdf"
+      }
+    },
+    {
+      "operation": "text_chunk",
+      "duration": 0.0003173459990648553,
+      "duration_ms": 0.3173459990648553,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "text_length": 14384
+      }
+    },
+    {
+      "operation": "boilerplate_filter",
+      "duration": 0.03611870700115105,
+      "duration_ms": 36.11870700115105,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "chunk_count": 11
+      }
+    },
+    {
+      "operation": "embedding_model_encode",
+      "duration": 0.011548899999979767,
+      "duration_ms": 11.548899999979767,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "batch_size": 11,
+        "cache_hits": 0
+      }
+    },
+    {
+      "operation": "vector_store",
+      "duration": 0.0015709019990026718,
+      "duration_ms": 1.5709019990026718,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "vector_count": 11
+      }
+    },
+    {
+      "operation": "process_embedding_chunks_batch",
+      "duration": 0.10714548400028434,
+      "duration_ms": 107.14548400028434,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "total_chunks": 11
+      }
+    },
+    {
+      "operation": "embedding_generate",
+      "duration": 0.10724519200084615,
+      "duration_ms": 107.24519200084615,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "chunk_count": 11
+      }
+    },
+    {
+      "operation": "process_single_file",
+      "duration": 0.42375402600009693,
+      "duration_ms": 423.7540260000969,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_id": 1498090
+      }
+    },
+    {
+      "operation": "file_claim_check",
+      "duration": 2.2542000806424767e-05,
+      "duration_ms": 0.022542000806424767,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_id": 1498091
+      }
+    },
+    {
+      "operation": "file_read",
+      "duration": 0.09317206900050223,
+      "duration_ms": 93.17206900050223,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_path": "/mnt/HomerShare/FBO Attachments/ACC-APG DIV A Competitive Opportunities as of 06 July 2023.pdf"
+      }
+    },
+    {
+      "operation": "text_chunk",
+      "duration": 0.0002584960002423031,
+      "duration_ms": 0.2584960002423031,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "text_length": 12739
+      }
+    },
+    {
+      "operation": "boilerplate_filter",
+      "duration": 0.032103892999657546,
+      "duration_ms": 32.103892999657546,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "chunk_count": 10
+      }
+    },
+    {
+      "operation": "embedding_model_encode",
+      "duration": 0.005874357999346103,
+      "duration_ms": 5.874357999346103,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "batch_size": 4,
+        "cache_hits": 6
+      }
+    },
+    {
+      "operation": "vector_store",
+      "duration": 0.0013048119999439223,
+      "duration_ms": 1.3048119999439223,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "vector_count": 10
+      }
+    },
+    {
+      "operation": "process_embedding_chunks_batch",
+      "duration": 0.09218062599939003,
+      "duration_ms": 92.18062599939003,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "total_chunks": 10
+      }
+    },
+    {
+      "operation": "embedding_generate",
+      "duration": 0.09223634100089839,
+      "duration_ms": 92.23634100089839,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "chunk_count": 10
+      }
+    },
+    {
+      "operation": "process_single_file",
+      "duration": 0.21866844499891158,
+      "duration_ms": 218.66844499891158,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_id": 1498091
+      }
+    },
+    {
+      "operation": "file_claim_check",
+      "duration": 2.171099913539365e-05,
+      "duration_ms": 0.02171099913539365,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_id": 1418642
+      }
+    },
+    {
+      "operation": "file_read",
+      "duration": 0.14242157700027747,
+      "duration_ms": 142.42157700027747,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_path": "/mnt/HomerShare/FBO Attachments/ACC Division A Opportunities 24 November 2021.pdf"
+      }
+    },
+    {
+      "operation": "text_chunk",
+      "duration": 0.0005510049995791633,
+      "duration_ms": 0.5510049995791633,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "text_length": 23076
+      }
+    },
+    {
+      "operation": "boilerplate_filter",
+      "duration": 0.060606008000831935,
+      "duration_ms": 60.606008000831935,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "chunk_count": 19
+      }
+    },
+    {
+      "operation": "embedding_model_encode",
+      "duration": 0.01790887999959523,
+      "duration_ms": 17.90887999959523,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "batch_size": 19,
+        "cache_hits": 0
+      }
+    },
+    {
+      "operation": "vector_store",
+      "duration": 0.0014047100012248848,
+      "duration_ms": 1.4047100012248848,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "vector_count": 19
+      }
+    },
+    {
+      "operation": "process_embedding_chunks_batch",
+      "duration": 0.20548339000015403,
+      "duration_ms": 205.48339000015403,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "total_chunks": 19
+      }
+    },
+    {
+      "operation": "embedding_generate",
+      "duration": 0.20558186599919281,
+      "duration_ms": 205.58186599919281,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "chunk_count": 19
+      }
+    },
+    {
+      "operation": "process_single_file",
+      "duration": 0.41009668500009866,
+      "duration_ms": 410.09668500009866,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_id": 1418642
+      }
+    },
+    {
+      "operation": "file_claim_check",
+      "duration": 2.1269999706419185e-05,
+      "duration_ms": 0.021269999706419185,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_id": 1502195
+      }
+    },
+    {
+      "operation": "file_read",
+      "duration": 0.09804337200148439,
+      "duration_ms": 98.04337200148439,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_path": "/mnt/HomerShare/FBO Attachments/ACC-APG DIV A Competitive Opportunities as of 03 October 2023.pdf"
+      }
+    },
+    {
+      "operation": "text_chunk",
+      "duration": 0.0003086300002905773,
+      "duration_ms": 0.3086300002905773,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "text_length": 15229
+      }
+    },
+    {
+      "operation": "boilerplate_filter",
+      "duration": 0.036156706999463495,
+      "duration_ms": 36.156706999463495,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "chunk_count": 11
+      }
+    },
+    {
+      "operation": "embedding_model_encode",
+      "duration": 0.011871807000716217,
+      "duration_ms": 11.871807000716217,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "batch_size": 11,
+        "cache_hits": 0
+      }
+    },
+    {
+      "operation": "vector_store",
+      "duration": 0.0015938139986246824,
+      "duration_ms": 1.5938139986246824,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "vector_count": 11
+      }
+    },
+    {
+      "operation": "process_embedding_chunks_batch",
+      "duration": 0.13995598499968764,
+      "duration_ms": 139.95598499968764,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "total_chunks": 11
+      }
+    },
+    {
+      "operation": "embedding_generate",
+      "duration": 0.1400484690002486,
+      "duration_ms": 140.0484690002486,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "chunk_count": 11
+      }
+    },
+    {
+      "operation": "process_single_file",
+      "duration": 0.27593928600072104,
+      "duration_ms": 275.93928600072104,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_id": 1502195
+      }
+    },
+    {
+      "operation": "file_claim_check",
+      "duration": 2.1751000531367026e-05,
+      "duration_ms": 0.021751000531367026,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_id": 1498093
+      }
+    },
+    {
+      "operation": "file_read",
+      "duration": 0.03809895700032939,
+      "duration_ms": 38.09895700032939,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_path": "/mnt/HomerShare/FBO Attachments/ACC-APG DIV A Competitive Opportunities as of 03 APR 2023.xlsx"
+      }
+    },
+    {
+      "operation": "text_chunk",
+      "duration": 0.0006481670006905915,
+      "duration_ms": 0.6481670006905915,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "text_length": 41547
+      }
+    },
+    {
+      "operation": "boilerplate_filter",
+      "duration": 0.12442443199870468,
+      "duration_ms": 124.42443199870468,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "chunk_count": 41
+      }
+    },
+    {
+      "operation": "embedding_model_encode",
+      "duration": 0.0077930930001457455,
+      "duration_ms": 7.7930930001457455,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "batch_size": 7,
+        "cache_hits": 34
+      }
+    },
+    {
+      "operation": "vector_store",
+      "duration": 0.0017746339999575866,
+      "duration_ms": 1.7746339999575866,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "vector_count": 41
+      }
+    },
+    {
+      "operation": "process_embedding_chunks_batch",
+      "duration": 0.15594871600114857,
+      "duration_ms": 155.94871600114857,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "total_chunks": 41
+      }
+    },
+    {
+      "operation": "embedding_generate",
+      "duration": 0.15604271200027142,
+      "duration_ms": 156.04271200027142,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "chunk_count": 41
+      }
+    },
+    {
+      "operation": "process_single_file",
+      "duration": 0.3201138889999129,
+      "duration_ms": 320.1138889999129,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_id": 1498093
+      }
+    },
+    {
+      "operation": "file_claim_check",
+      "duration": 2.042800042545423e-05,
+      "duration_ms": 0.02042800042545423,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_id": 1498089
+      }
+    },
+    {
+      "operation": "file_read",
+      "duration": 0.13045028499982436,
+      "duration_ms": 130.45028499982436,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_path": "/mnt/HomerShare/FBO Attachments/ACC-APG DIV A Competitive Opportunities as of 12 September 2023.pdf"
+      }
+    },
+    {
+      "operation": "text_chunk",
+      "duration": 0.00030652600071334746,
+      "duration_ms": 0.30652600071334746,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "text_length": 14384
+      }
+    },
+    {
+      "operation": "boilerplate_filter",
+      "duration": 0.03598920300100872,
+      "duration_ms": 35.98920300100872,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "chunk_count": 11
+      }
+    },
+    {
+      "operation": "vector_store",
+      "duration": 0.0017574619996594265,
+      "duration_ms": 1.7574619996594265,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "vector_count": 11
+      }
+    },
+    {
+      "operation": "process_embedding_chunks_batch",
+      "duration": 0.001876366000942653,
+      "duration_ms": 1.876366000942653,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "total_chunks": 11
+      }
+    },
+    {
+      "operation": "embedding_generate",
+      "duration": 0.0019298959996376652,
+      "duration_ms": 1.9298959996376652,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "chunk_count": 11
+      }
+    },
+    {
+      "operation": "process_single_file",
+      "duration": 0.1696625540007517,
+      "duration_ms": 169.6625540007517,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_id": 1498089
+      }
+    },
+    {
+      "operation": "file_claim_check",
+      "duration": 2.0669000150519423e-05,
+      "duration_ms": 0.020669000150519423,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_id": 1498094
+      }
+    },
+    {
+      "operation": "file_read",
+      "duration": 0.03755788099988422,
+      "duration_ms": 37.55788099988422,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_path": "/mnt/HomerShare/FBO Attachments/ACC-APG DIV A Competitive Opportunities as of 03 JAN 2023.xlsx"
+      }
+    },
+    {
+      "operation": "text_chunk",
+      "duration": 0.0006470059997809585,
+      "duration_ms": 0.6470059997809585,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "text_length": 39684
+      }
+    },
+    {
+      "operation": "boilerplate_filter",
+      "duration": 0.12004453200097487,
+      "duration_ms": 120.04453200097487,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "chunk_count": 39
+      }
+    },
+    {
+      "operation": "embedding_model_encode",
+      "duration": 0.005051702000855585,
+      "duration_ms": 5.051702000855585,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "batch_size": 3,
+        "cache_hits": 36
+      }
+    },
+    {
+      "operation": "vector_store",
+      "duration": 0.0018742819993349258,
+      "duration_ms": 1.8742819993349258,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "vector_count": 39
+      }
+    },
+    {
+      "operation": "process_embedding_chunks_batch",
+      "duration": 0.19751035899935232,
+      "duration_ms": 197.51035899935232,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "total_chunks": 39
+      }
+    },
+    {
+      "operation": "embedding_generate",
+      "duration": 0.19761666899830743,
+      "duration_ms": 197.61666899830743,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "chunk_count": 39
+      }
+    },
+    {
+      "operation": "process_single_file",
+      "duration": 0.3568852929984132,
+      "duration_ms": 356.8852929984132,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_id": 1498094
+      }
+    },
+    {
+      "operation": "files_sequential_processing",
+      "duration": 3.116485868999007,
+      "duration_ms": 3116.485868999007,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_count": 10
+      }
+    },
+    {
+      "operation": "parallel_entity_collection",
+      "duration": 4.169899875705596e-05,
+      "duration_ms": 0.04169899875705596,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "process_single_opportunity",
+      "duration": 3.1232484949996433,
+      "duration_ms": 3123.2484949996433,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "opportunity_id": "D6F5B7A0-3205-4087-9825-0004569657D7",
+        "file_count": 10
+      }
+    },
+    {
+      "operation": "title_embedding_generation",
+      "duration": 0.0021164870013308246,
+      "duration_ms": 2.1164870013308246,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "title_vector_insert",
+      "duration": 0.0008957430000009481,
+      "duration_ms": 0.8957430000009481,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "title_embedding",
+      "duration": 0.0031890320005913964,
+      "duration_ms": 3.1890320005913964,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "description_embedding_generation",
+      "duration": 0.0025232209991372656,
+      "duration_ms": 2.5232209991372656,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "description_vector_insert",
+      "duration": 0.0010118519985553576,
+      "duration_ms": 1.0118519985553576,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "description_embedding",
+      "duration": 0.0037119749995326856,
+      "duration_ms": 3.7119749995326856,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "parallel_entity_collection",
+      "duration": 0.009503876999588101,
+      "duration_ms": 9.503876999588101,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "process_single_opportunity",
+      "duration": 0.01660391800032812,
+      "duration_ms": 16.60391800032812,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "opportunity_id": "DFC6A21F-E072-4CC0-A185-0008931F1CBA",
+        "file_count": 0
+      }
+    },
+    {
+      "operation": "title_embedding_generation",
+      "duration": 0.002550432000134606,
+      "duration_ms": 2.550432000134606,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "title_vector_insert",
+      "duration": 0.0009706840010039741,
+      "duration_ms": 0.9706840010039741,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "title_embedding",
+      "duration": 0.0037022059987066314,
+      "duration_ms": 3.7022059987066314,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "description_embedding_generation",
+      "duration": 0.0022557280008186353,
+      "duration_ms": 2.2557280008186353,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "description_vector_insert",
+      "duration": 0.0012920079989271471,
+      "duration_ms": 1.2920079989271471,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "description_embedding",
+      "duration": 0.003709890001118765,
+      "duration_ms": 3.709890001118765,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "file_claim_check",
+      "duration": 2.3053000404615887e-05,
+      "duration_ms": 0.023053000404615887,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_id": 1510605
+      }
+    },
+    {
+      "operation": "file_read",
+      "duration": 0.0742275630000222,
+      "duration_ms": 74.2275630000222,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_path": "/mnt/HomerShare/FBO Attachments/75F40124R00030_SSN.pdf"
+      }
+    },
+    {
+      "operation": "text_chunk",
+      "duration": 0.00024130299971147906,
+      "duration_ms": 0.24130299971147906,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "text_length": 11273
+      }
+    },
+    {
+      "operation": "boilerplate_filter",
+      "duration": 0.029321664998860797,
+      "duration_ms": 29.321664998860797,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "chunk_count": 9
+      }
+    },
+    {
+      "operation": "embedding_model_encode",
+      "duration": 0.009290076000979752,
+      "duration_ms": 9.290076000979752,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "batch_size": 9,
+        "cache_hits": 0
+      }
+    },
+    {
+      "operation": "vector_store",
+      "duration": 0.0013784100010525435,
+      "duration_ms": 1.3784100010525435,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "vector_count": 9
+      }
+    },
+    {
+      "operation": "process_embedding_chunks_batch",
+      "duration": 0.12895182899956126,
+      "duration_ms": 128.95182899956126,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "total_chunks": 9
+      }
+    },
+    {
+      "operation": "embedding_generate",
+      "duration": 0.1290581889988971,
+      "duration_ms": 129.0581889988971,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "chunk_count": 9
+      }
+    },
+    {
+      "operation": "process_single_file",
+      "duration": 0.23423870199985686,
+      "duration_ms": 234.23870199985686,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_id": 1510605
+      }
+    },
+    {
+      "operation": "files_sequential_processing",
+      "duration": 0.23495579900009034,
+      "duration_ms": 234.95579900009034,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_count": 1
+      }
+    },
+    {
+      "operation": "parallel_entity_collection",
+      "duration": 3.5016000765608624e-05,
+      "duration_ms": 0.035016000765608624,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "process_single_opportunity",
+      "duration": 0.24261549199945875,
+      "duration_ms": 242.61549199945875,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "opportunity_id": "A2EC3BB8-EBDF-4AAB-9A84-0008B36C2991",
+        "file_count": 1
+      }
+    },
+    {
+      "operation": "title_embedding_generation",
+      "duration": 0.0021416340005089296,
+      "duration_ms": 2.1416340005089296,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "title_vector_insert",
+      "duration": 0.0010545320001256187,
+      "duration_ms": 1.0545320001256187,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "title_embedding",
+      "duration": 0.0034139440012950217,
+      "duration_ms": 3.4139440012950217,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "description_embedding_generation",
+      "duration": 0.0022240990001591854,
+      "duration_ms": 2.2240990001591854,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "description_vector_insert",
+      "duration": 0.0010254369990434498,
+      "duration_ms": 1.0254369990434498,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "description_embedding",
+      "duration": 0.0034351440008322243,
+      "duration_ms": 3.4351440008322243,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "file_claim_check",
+      "duration": 3.076800021517556e-05,
+      "duration_ms": 0.03076800021517556,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_id": 1516935
+      }
+    },
+    {
+      "operation": "file_read",
+      "duration": 0.6177995180005382,
+      "duration_ms": 617.7995180005382,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_path": "/mnt/HomerShare/FBO Attachments/N0017821P6630 - SF18.pdf"
+      }
+    },
+    {
+      "operation": "text_chunk",
+      "duration": 0.002289643000040087,
+      "duration_ms": 2.289643000040087,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "text_length": 125977
+      }
+    },
+    {
+      "operation": "boilerplate_filter",
+      "duration": 0.33123989600062487,
+      "duration_ms": 331.23989600062487,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "chunk_count": 104
+      }
+    },
+    {
+      "operation": "embedding_model_encode",
+      "duration": 0.093635721001192,
+      "duration_ms": 93.635721001192,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "batch_size": 104,
+        "cache_hits": 0
+      }
+    },
+    {
+      "operation": "vector_store",
+      "duration": 0.004073443999004667,
+      "duration_ms": 4.073443999004667,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "vector_count": 104
+      }
+    },
+    {
+      "operation": "process_embedding_chunks_batch",
+      "duration": 1.5402072559991211,
+      "duration_ms": 1540.2072559991211,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "total_chunks": 104
+      }
+    },
+    {
+      "operation": "embedding_generate",
+      "duration": 1.5403153100014606,
+      "duration_ms": 1540.3153100014606,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "chunk_count": 104
+      }
+    },
+    {
+      "operation": "process_single_file",
+      "duration": 2.4927701220003655,
+      "duration_ms": 2492.7701220003655,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_id": 1516935
+      }
+    },
+    {
+      "operation": "file_claim_check",
+      "duration": 2.1791000108351e-05,
+      "duration_ms": 0.021791000108351,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_id": 1516753
+      }
+    },
+    {
+      "operation": "file_read",
+      "duration": 3.7860998418182135e-05,
+      "duration_ms": 0.037860998418182135,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_path": "/mnt/HomerShare/FBO Attachments/N0017821Q6630 Synopsis.doc"
+      }
+    },
+    {
+      "operation": "process_single_file",
+      "duration": 0.0013582020001194905,
+      "duration_ms": 1.3582020001194905,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_id": 1516753
+      }
+    },
+    {
+      "operation": "files_sequential_processing",
+      "duration": 2.494869325999389,
+      "duration_ms": 2494.869325999389,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_count": 2
+      }
+    },
+    {
+      "operation": "parallel_entity_collection",
+      "duration": 3.1880001188255847e-05,
+      "duration_ms": 0.031880001188255847,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "process_single_opportunity",
+      "duration": 2.501956041000085,
+      "duration_ms": 2501.956041000085,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "opportunity_id": "897B3264-7CD5-44CB-8F22-0008ECD8F99E",
+        "file_count": 2
+      }
+    },
+    {
+      "operation": "title_embedding_generation",
+      "duration": 0.0024560050005675294,
+      "duration_ms": 2.4560050005675294,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "title_vector_insert",
+      "duration": 0.0008556880002288381,
+      "duration_ms": 0.8556880002288381,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "title_embedding",
+      "duration": 0.003469138999207644,
+      "duration_ms": 3.469138999207644,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "process_single_opportunity",
+      "duration": 0.0035216180003772024,
+      "duration_ms": 3.5216180003772024,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "opportunity_id": "DB296FC7-4E59-4940-ACCB-000B4705CD19",
+        "file_count": 0
+      }
+    },
+    {
+      "operation": "title_embedding_generation",
+      "duration": 0.0021592169996438315,
+      "duration_ms": 2.1592169996438315,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "title_vector_insert",
+      "duration": 0.0007283579998329515,
+      "duration_ms": 0.7283579998329515,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "title_embedding",
+      "duration": 0.0030477469990728423,
+      "duration_ms": 3.0477469990728423,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "description_embedding_generation",
+      "duration": 0.0023123249993659556,
+      "duration_ms": 2.3123249993659556,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "description_vector_insert",
+      "duration": 0.0007384780001302715,
+      "duration_ms": 0.7384780001302715,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "description_embedding",
+      "duration": 0.003210502000001725,
+      "duration_ms": 3.210502000001725,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "file_claim_check",
+      "duration": 2.400499943178147e-05,
+      "duration_ms": 0.02400499943178147,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_id": 1484343
+      }
+    },
+    {
+      "operation": "file_read",
+      "duration": 1.2079667630005133,
+      "duration_ms": 1207.9667630005133,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_path": "/mnt/HomerShare/FBO Attachments/19LG7524R0001.pdf"
+      }
+    },
+    {
+      "operation": "text_chunk",
+      "duration": 0.0025850370002444834,
+      "duration_ms": 2.5850370002444834,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "text_length": 146806
+      }
+    },
+    {
+      "operation": "boilerplate_filter",
+      "duration": 0.40219214699936856,
+      "duration_ms": 402.19214699936856,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "chunk_count": 124
+      }
+    },
+    {
+      "operation": "embedding_model_encode",
+      "duration": 0.11089646500113304,
+      "duration_ms": 110.89646500113304,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "batch_size": 124,
+        "cache_hits": 0
+      }
+    },
+    {
+      "operation": "vector_store",
+      "duration": 0.003592810999180074,
+      "duration_ms": 3.592810999180074,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "vector_count": 124
+      }
+    },
+    {
+      "operation": "process_embedding_chunks_batch",
+      "duration": 2.89836858200033,
+      "duration_ms": 2898.36858200033,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "total_chunks": 124
+      }
+    },
+    {
+      "operation": "embedding_generate",
+      "duration": 2.898458292000214,
+      "duration_ms": 2898.458292000214,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "chunk_count": 124
+      }
+    },
+    {
+      "operation": "process_single_file",
+      "duration": 4.51228123600049,
+      "duration_ms": 4512.28123600049,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_id": 1484343
+      }
+    },
+    {
+      "operation": "file_claim_check",
+      "duration": 2.2873000489198603e-05,
+      "duration_ms": 0.022873000489198603,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_id": 1484344
+      }
+    },
+    {
+      "operation": "file_read",
+      "duration": 0.03408444399974542,
+      "duration_ms": 34.08444399974542,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_path": "/mnt/HomerShare/FBO Attachments/Solicitation Invitation letter.pdf"
+      }
+    },
+    {
+      "operation": "text_chunk",
+      "duration": 3.273100082878955e-05,
+      "duration_ms": 0.03273100082878955,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "text_length": 1
+      }
+    },
+    {
+      "operation": "boilerplate_filter",
+      "duration": 2.0909999875584617e-05,
+      "duration_ms": 0.020909999875584617,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "chunk_count": 0
+      }
+    },
+    {
+      "operation": "process_single_file",
+      "duration": 0.03545423800096614,
+      "duration_ms": 35.45423800096614,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_id": 1484344
+      }
+    },
+    {
+      "operation": "file_claim_check",
+      "duration": 1.8303999240742996e-05,
+      "duration_ms": 0.018303999240742996,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_id": 1484373
+      }
+    },
+    {
+      "operation": "file_read",
+      "duration": 0.025146119000055478,
+      "duration_ms": 25.146119000055478,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_path": "/mnt/HomerShare/FBO Attachments/Exhibit E Health Insurance Benefits.xlsx"
+      }
+    },
+    {
+      "operation": "text_chunk",
+      "duration": 0.00019147999955748674,
+      "duration_ms": 0.19147999955748674,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "text_length": 9008
+      }
+    },
+    {
+      "operation": "boilerplate_filter",
+      "duration": 0.023022420000415877,
+      "duration_ms": 23.022420000415877,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "chunk_count": 7
+      }
+    },
+    {
+      "operation": "embedding_model_encode",
+      "duration": 0.008151506001013331,
+      "duration_ms": 8.151506001013331,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "batch_size": 7,
+        "cache_hits": 0
+      }
+    },
+    {
+      "operation": "vector_store",
+      "duration": 0.0015345840001828037,
+      "duration_ms": 1.5345840001828037,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "vector_count": 7
+      }
+    },
+    {
+      "operation": "process_embedding_chunks_batch",
+      "duration": 0.2371969439991517,
+      "duration_ms": 237.1969439991517,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "total_chunks": 7
+      }
+    },
+    {
+      "operation": "embedding_generate",
+      "duration": 0.23729458699926909,
+      "duration_ms": 237.2945869992691,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "chunk_count": 7
+      }
+    },
+    {
+      "operation": "process_single_file",
+      "duration": 0.28655739200075914,
+      "duration_ms": 286.55739200075914,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_id": 1484373
+      }
+    },
+    {
+      "operation": "files_sequential_processing",
+      "duration": 4.835819855999944,
+      "duration_ms": 4835.819855999944,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_count": 3
+      }
+    },
+    {
+      "operation": "parallel_entity_collection",
+      "duration": 2.9314998755580746e-05,
+      "duration_ms": 0.029314998755580746,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "process_single_opportunity",
+      "duration": 4.842274163998809,
+      "duration_ms": 4842.274163998809,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "opportunity_id": "787582DE-0B3E-4746-9EA4-001AA282939B",
+        "file_count": 3
+      }
+    },
+    {
+      "operation": "title_embedding_generation",
+      "duration": 0.001950474999830476,
+      "duration_ms": 1.950474999830476,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "title_vector_insert",
+      "duration": 0.0009555659999023192,
+      "duration_ms": 0.9555659999023192,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "title_embedding",
+      "duration": 0.0030845460005366476,
+      "duration_ms": 3.0845460005366476,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "description_embedding_generation",
+      "duration": 0.005067361000328674,
+      "duration_ms": 5.067361000328674,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "description_vector_insert",
+      "duration": 0.0009842599993135082,
+      "duration_ms": 0.9842599993135082,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "description_embedding",
+      "duration": 0.00628256500021962,
+      "duration_ms": 6.28256500021962,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "file_claim_check",
+      "duration": 0.00040713499947742093,
+      "duration_ms": 0.40713499947742093,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_id": 1509646
+      }
+    },
+    {
+      "operation": "file_read",
+      "duration": 0.3060480849999294,
+      "duration_ms": 306.0480849999294,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_path": "/mnt/HomerShare/FBO Attachments/FY23_1__Appendix_A_-_Const_Specs_-_Production_Offices_FINAL_2022-10-19_(1).docx"
+      }
+    },
+    {
+      "operation": "text_chunk",
+      "duration": 0.0022140600012789946,
+      "duration_ms": 2.2140600012789946,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "text_length": 124494
+      }
+    },
+    {
+      "operation": "boilerplate_filter",
+      "duration": 0.3033722079999279,
+      "duration_ms": 303.3722079999279,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "chunk_count": 95
+      }
+    },
+    {
+      "operation": "embedding_model_encode",
+      "duration": 0.08668847899934917,
+      "duration_ms": 86.68847899934917,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "batch_size": 95,
+        "cache_hits": 0
+      }
+    },
+    {
+      "operation": "vector_store",
+      "duration": 0.0027374229994165944,
+      "duration_ms": 2.7374229994165944,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "vector_count": 95
+      }
+    },
+    {
+      "operation": "process_embedding_chunks_batch",
+      "duration": 3.2373683490004623,
+      "duration_ms": 3237.3683490004623,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "total_chunks": 95
+      }
+    },
+    {
+      "operation": "embedding_generate",
+      "duration": 3.2374733060005383,
+      "duration_ms": 3237.4733060005383,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "chunk_count": 95
+      }
+    },
+    {
+      "operation": "process_single_file",
+      "duration": 3.8559272830007103,
+      "duration_ms": 3855.9272830007103,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_id": 1509646
+      }
+    },
+    {
+      "operation": "file_claim_check",
+      "duration": 2.2261998310568742e-05,
+      "duration_ms": 0.022261998310568742,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_id": 1509648
+      }
+    },
+    {
+      "operation": "file_read",
+      "duration": 0.05471419899913599,
+      "duration_ms": 54.71419899913599,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_path": "/mnt/HomerShare/FBO Attachments/Nationwide Lease Master 2021 for New Office or Relocation _1.docx"
+      }
+    },
+    {
+      "operation": "text_chunk",
+      "duration": 0.0009988959991460433,
+      "duration_ms": 0.9988959991460433,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "text_length": 55229
+      }
+    },
+    {
+      "operation": "boilerplate_filter",
+      "duration": 0.14256396900054824,
+      "duration_ms": 142.56396900054824,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "chunk_count": 45
+      }
+    },
+    {
+      "operation": "embedding_model_encode",
+      "duration": 0.04113770799995109,
+      "duration_ms": 41.13770799995109,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "batch_size": 45,
+        "cache_hits": 0
+      }
+    },
+    {
+      "operation": "vector_store",
+      "duration": 0.002205714999945485,
+      "duration_ms": 2.205714999945485,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "vector_count": 45
+      }
+    },
+    {
+      "operation": "process_embedding_chunks_batch",
+      "duration": 1.8807364179992874,
+      "duration_ms": 1880.7364179992874,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "total_chunks": 45
+      }
+    },
+    {
+      "operation": "embedding_generate",
+      "duration": 1.880890297001315,
+      "duration_ms": 1880.890297001315,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "chunk_count": 45
+      }
+    },
+    {
+      "operation": "process_single_file",
+      "duration": 2.080735198000184,
+      "duration_ms": 2080.735198000184,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_id": 1509648
+      }
+    },
+    {
+      "operation": "file_claim_check",
+      "duration": 3.897399983543437e-05,
+      "duration_ms": 0.03897399983543437,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_id": 1234118
+      }
+    },
+    {
+      "operation": "file_read",
+      "duration": 0.051885763999962364,
+      "duration_ms": 51.885763999962364,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_path": "/mnt/HomerShare/FBO Attachments/Attachment 2_General Clauses.docx"
+      }
+    },
+    {
+      "operation": "text_chunk",
+      "duration": 0.0009225329995388165,
+      "duration_ms": 0.9225329995388165,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "text_length": 54332
+      }
+    },
+    {
+      "operation": "boilerplate_filter",
+      "duration": 0.1443093690013484,
+      "duration_ms": 144.3093690013484,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "chunk_count": 46
+      }
+    },
+    {
+      "operation": "embedding_model_encode",
+      "duration": 0.041524013999151066,
+      "duration_ms": 41.524013999151066,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "batch_size": 46,
+        "cache_hits": 0
+      }
+    },
+    {
+      "operation": "vector_store",
+      "duration": 0.0022619299998041242,
+      "duration_ms": 2.2619299998041242,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "vector_count": 46
+      }
+    },
+    {
+      "operation": "process_embedding_chunks_batch",
+      "duration": 2.0849180660006823,
+      "duration_ms": 2084.9180660006823,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "total_chunks": 46
+      }
+    },
+    {
+      "operation": "embedding_generate",
+      "duration": 2.0850276319997647,
+      "duration_ms": 2085.0276319997647,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "chunk_count": 46
+      }
+    },
+    {
+      "operation": "process_single_file",
+      "duration": 2.2836051429985673,
+      "duration_ms": 2283.6051429985673,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_id": 1234118
+      }
+    },
+    {
+      "operation": "files_sequential_processing",
+      "duration": 8.220472938999592,
+      "duration_ms": 8220.472938999592,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "file_count": 3
+      }
+    },
+    {
+      "operation": "parallel_entity_collection",
+      "duration": 2.970600144180935e-05,
+      "duration_ms": 0.02970600144180935,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "entity_filter_confidence",
+      "duration": 8.998900011647493e-05,
+      "duration_ms": 0.08998900011647493,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "entity_consolidation",
+      "duration": 8.667300062370487e-05,
+      "duration_ms": 0.08667300062370487,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    },
+    {
+      "operation": "entity_storage_db",
+      "duration": 0.015613538000252447,
+      "duration_ms": 15.613538000252447,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "entity_count": 1
+      }
+    },
+    {
+      "operation": "process_opportunity_entities",
+      "duration": 0.01589430599960906,
+      "duration_ms": 15.89430599960906,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "entity_count": 1
+      }
+    },
+    {
+      "operation": "entity_storage",
+      "duration": 0.015943067000989686,
+      "duration_ms": 15.943067000989686,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "entity_count": 1
+      }
+    },
+    {
+      "operation": "process_single_opportunity",
+      "duration": 8.246014571999694,
+      "duration_ms": 8246.014571999694,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {
+        "opportunity_id": "1B3835A3-4704-4A63-BABA-00264BADF8D9",
+        "file_count": 3
+      }
+    },
+    {
+      "operation": "cleanup_operations",
+      "duration": 0.4569549879997794,
+      "duration_ms": 456.9549879997794,
+      "thread_id": "Thread-28 (process_embeddings_background)",
+      "metadata": {}
+    }
+  ]
+}
