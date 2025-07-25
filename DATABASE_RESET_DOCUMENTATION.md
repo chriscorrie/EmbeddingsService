@@ -128,7 +128,7 @@ After running this script, you'll need to:
 1. Check Milvus container status: `docker ps`
 2. Verify SQL Server connectivity
 3. Run `create_index.py` manually if collections not recreated
-4. Check service logs: `sudo journalctl -u document-embedding-api-v3.service`
+4. Check service logs: `sudo journalctl -u document-embedding-api.service`
 
 **If you regret running it:**
 - There is no undo option

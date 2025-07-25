@@ -202,7 +202,7 @@ All utility scripts are organized in the `scripts/` directory:
 
 ### Service Management  
 - **`manage_service.sh`** - Service control and management
-- **`manage_service_v3.sh`** - Enhanced service management
+- **`manage_service_enhanced.sh`** - Enhanced service management with installation and monitoring
 - **`service_manager.sh`** - Alternative service manager
 - **`status_check.sh`** - Comprehensive system status checker
 - **`startup.sh`** - Service startup script (used by systemd)

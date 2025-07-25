@@ -15,14 +15,14 @@
 ### **Main Components**:
 ```
 🌐 Production API Service
-├── 🐍 Python: production_rest_api_service_v3.py
+├── 🐍 Python: production_rest_api_service.py
 ├── 🧠 PyTorch: 2.9.0.dev20250724+cu129 with CUDA 12.9
 ├── 🗄️ Vector DB: Milvus v2.3.0 (via Docker)
 └── 📊 Performance: 14,539 sentences/second
 ```
 
 ### **Service Configuration**:
-- **Name**: `document-embedding-api-v3.service`
+- **Name**: `document-embedding-api.service`
 - **Auto-start**: ✅ Enabled
 - **Dependencies**: Docker service
 - **Port**: 5000
@@ -39,15 +39,15 @@ cd /home/chris/Projects/EmbeddingsService
 ./scripts/status_check.sh
 
 # Service control
-sudo systemctl status document-embedding-api-v3.service
-sudo systemctl restart document-embedding-api-v3.service
-sudo systemctl stop document-embedding-api-v3.service
+sudo systemctl status document-embedding-api.service
+sudo systemctl restart document-embedding-api.service
+sudo systemctl stop document-embedding-api.service
 
 # View logs
-sudo journalctl -u document-embedding-api-v3.service -f
+sudo journalctl -u document-embedding-api.service -f
 
 # Management script
-./manage_service_v3.sh status|logs|restart
+./scripts/manage_service_enhanced.sh status|logs|restart
 ```
 
 ### **API Endpoints**:
@@ -96,7 +96,7 @@ cd /home/chris/Projects/EmbeddingsService
 
 # Should show:
 # ✅ Milvus containers running
-# ✅ document-embedding-api-v3.service: active  
+# ✅ document-embedding-api.service: active  
 # ✅ API responding at http://localhost:5000
 ```
 
@@ -113,10 +113,10 @@ sudo docker ps | grep milvus
 sudo systemctl status docker
 
 # Check service logs
-sudo journalctl -u document-embedding-api-v3.service -n 50
+sudo journalctl -u document-embedding-api.service -n 50
 
 # Restart sequence
-sudo systemctl restart document-embedding-api-v3.service
+sudo systemctl restart document-embedding-api.service
 ```
 
 #### **Milvus Connection Issues**:
@@ -139,7 +139,7 @@ python -c "from pymilvus import connections; connections.connect('default', host
 nvidia-smi
 
 # Check service resources
-sudo systemctl status document-embedding-api-v3.service
+sudo systemctl status document-embedding-api.service
 
 # Run performance test
 source venv/bin/activate
@@ -186,11 +186,11 @@ python debug/gpu_performance_test.py
 
 ```
 /home/chris/Projects/EmbeddingsService/
-├── production_rest_api_service_v3.py    # Main API service
-├── document-embedding-api-v3.service    # Systemd service file
+├── production_rest_api_service.py       # Main API service
+├── document-embedding-api.service       # Systemd service file
 ├── docker-compose.yml                   # Milvus container config
 ├── scripts/                             # Utility scripts
-│   ├── manage_service_v3.sh             # Service management
+│   ├── manage_service_enhanced.sh       # Enhanced service management
 │   ├── status_check.sh                  # Status checker
 │   └── startup.sh                       # Startup script
 ├── venv/                                # Python virtual environment

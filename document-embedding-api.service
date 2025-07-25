@@ -10,6 +10,7 @@ User=chris
 Group=chris
 WorkingDirectory=/home/chris/Projects/EmbeddingsService
 Environment=PATH=/home/chris/Projects/EmbeddingsService/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStartPre=/home/chris/Projects/EmbeddingsService/scripts/startup.sh
 ExecStart=/home/chris/Projects/EmbeddingsService/venv/bin/python production_rest_api_service.py
 Restart=always
 RestartSec=10
