@@ -8,10 +8,31 @@ import sys
 import logging
 import time
 import threading
+import queue
 from typing import List, Dict, Set, Any, Optional, Tuple
+
+# Optional imports with graceful fallbacks
+try:
+    import pyodbc
+    PYODBC_AVAILABLE = True
+except ImportError:
+    PYODBC_AVAILABLE = False
+    
+try:
+    import torch
+    TORCH_AVAILABLE = True
+except ImportError:
+    TORCH_AVAILABLE = False
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
-import psutil
+
+# Optional psutil import with graceful fallback
+try:
+    import psutil
+    PSUTIL_AVAILABLE = True
+except ImportError:
+    PSUTIL_AVAILABLE = False
+    # Keep this one fallback since psutil is commonly missing and we can work without it
 
 # Add the current directory to Python path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -42,6 +63,8 @@ from config import (
     EMBEDDING_BATCH_SIZE,
     ENTITY_BATCH_SIZE,
     VECTOR_INSERT_BATCH_SIZE,
+    ENABLE_OPPORTUNITY_BATCH_COMMITS,
+    ENABLE_PRODUCER_CONSUMER_ARCHITECTURE,
     ENABLE_PARALLEL_ENTITY_EXTRACTION,
     ENABLE_CHUNK_EMBEDDING_CACHE,
     ENABLE_EMBEDDING_MODEL_POOL,
@@ -52,8 +75,8 @@ from config import (
     GPU_BATCH_SIZE_MULTIPLIER,
     FALLBACK_TO_CPU
 )
+# Optional imports with graceful fallbacks
 from pymilvus import connections, Collection, utility
-import pyodbc
 from sentence_transformers import SentenceTransformer
 
 # Phase 2 Optimization Imports
@@ -70,6 +93,38 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
+
+class Opportunity:
+    """Data class representing an opportunity with its metadata and documents"""
+    def __init__(self, opportunity_id: str, title: str, description: str, posted_date: str = None):
+        self.opportunity_id = opportunity_id
+        self.title = title
+        self.description = description
+        self.posted_date = posted_date
+        self.documents = []  # List of Document objects
+    
+    def add_document(self, document):
+        """Add a document to this opportunity"""
+        self.documents.append(document)
+
+class Document:
+    """Data class representing a document with its metadata and optional pre-loaded text"""
+    def __init__(self, file_id: int, file_location: str, file_size_bytes: int = None, text_content: str = None):
+        self.file_id = file_id
+        self.file_location = file_location
+        self.file_size_bytes = file_size_bytes
+        self.text_content = text_content  # Pre-loaded text data (None if not loaded)
+        self.load_error = None  # Track any errors during loading
+    
+    def is_text_loaded(self) -> bool:
+        """Check if text content is already loaded"""
+        return self.text_content is not None
+    
+    def get_memory_footprint_mb(self) -> float:
+        """Get approximate memory footprint in MB"""
+        if self.text_content:
+            return len(self.text_content.encode('utf-8')) / (1024 * 1024)
+        return 0.0
 
 class ScalableEnhancedProcessor:
     """
@@ -179,11 +234,7 @@ class ScalableEnhancedProcessor:
             BOILERPLATE_SIMILARITY_THRESHOLD
         )
         
-        # Set up boilerplate collection
-        if 'boilerplate' in self.collections:
-            self.boilerplate_manager.setup_boilerplate_collection(self.collections['boilerplate'])
-        
-        # Process boilerplate documents
+        # Process boilerplate documents (no database collection needed)
         if os.path.exists(boilerplate_docs_path):
             logger.info("Processing boilerplate documents...")
             bp_chunks = self.boilerplate_manager.process_boilerplate_documents(
@@ -197,6 +248,13 @@ class ScalableEnhancedProcessor:
         
         # Track processed opportunities
         self.processed_opportunities: Set[str] = set()
+        
+        # Batch commit tracking for vector database flushing
+        self.vector_batch_size = VECTOR_INSERT_BATCH_SIZE
+        self.enable_batch_commits = ENABLE_OPPORTUNITY_BATCH_COMMITS
+        
+        self.opportunities_since_last_flush = 0  # Track opportunities processed since last flush
+        self.batch_commit_lock = threading.Lock()  # Thread-safe batch counting
         
         # Thread-safe file processing cache (protects against race conditions)
         self.processed_files: Set[int] = set()  # Track processed file IDs (session + database)
@@ -224,7 +282,13 @@ class ScalableEnhancedProcessor:
             'chunk_cache_misses': 0,
             'parallel_entity_tasks': 0,
             'parallel_entity_successes': 0,
-            'parallel_entity_failures': 0
+            'parallel_entity_failures': 0,
+            # Queue monitoring statistics
+            'queue_max_size': 0,
+            'queue_avg_size': 0.0,
+            'queue_samples': 0,
+            'producer_throughput_mb_per_sec': 0.0,
+            'file_load_errors': 0
         }
         
         # Memory monitoring setup
@@ -234,6 +298,10 @@ class ScalableEnhancedProcessor:
     
     def setup_memory_monitoring(self):
         """Setup memory monitoring during processing"""
+        if not PSUTIL_AVAILABLE:
+            logger.warning("Memory monitoring disabled - psutil not available")
+            return
+            
         def monitor_resources():
             max_memory = 0
             cpu_samples = []
@@ -275,8 +343,7 @@ class ScalableEnhancedProcessor:
             self.collections = {
                 'titles': Collection("opportunity_titles"),
                 'descriptions': Collection("opportunity_descriptions"),
-                'opportunity_documents': Collection("opportunity_documents"),
-                'boilerplate': Collection("boilerplate")
+                'opportunity_documents': Collection("opportunity_documents")
             }
             
             logger.info("Connected to all collections")
@@ -288,6 +355,11 @@ class ScalableEnhancedProcessor:
     def setup_sql_connection(self):
         """Setup SQL Server connection"""
         try:
+            if not PYODBC_AVAILABLE:
+                logger.warning("SQL Server connection not available - pyodbc not installed")
+                self.sql_conn = None
+                return
+                
             if SQL_CONNECTION_STRING and SQL_CONNECTION_STRING != 'your_connection_string_here':
                 self.sql_conn = pyodbc.connect(SQL_CONNECTION_STRING)
                 # Enable autocommit to avoid transaction management issues with FreeTDS
@@ -364,8 +436,11 @@ class ScalableEnhancedProcessor:
         if not ENABLE_GPU_ACCELERATION:
             return 'cpu'
         
+        if not TORCH_AVAILABLE:
+            logger.warning("PyTorch not available, using CPU")
+            return 'cpu'
+        
         try:
-            import torch
             if torch.cuda.is_available():
                 gpu_count = torch.cuda.device_count()
                 gpu_name = torch.cuda.get_device_name(0)
@@ -381,9 +456,6 @@ class ScalableEnhancedProcessor:
             else:
                 logger.info("No CUDA GPU available, using CPU")
                 return 'cpu'
-        except ImportError:
-            logger.warning("PyTorch not available, using CPU")
-            return 'cpu'
         except Exception as e:
             logger.warning(f"GPU detection failed: {e}, falling back to CPU")
             return 'cpu' if FALLBACK_TO_CPU else GPU_DEVICE
@@ -427,6 +499,17 @@ class ScalableEnhancedProcessor:
         with self.stats_lock:
             return self.stats.copy()
     
+    def _flush_all_vector_collections(self):
+        """Flush all vector collections as a batch commit operation"""
+        try:
+            with time_operation('batch_commit_flush'):
+                for collection_name, collection in self.collections.items():
+                    collection.flush()
+            logger.debug(f"Successfully flushed all {len(self.collections)} vector collections")
+        except Exception as e:
+            logger.error(f"Error during batch commit flush: {e}")
+            raise
+    
     def get_opportunities_count(self, start_row_id: int, end_row_id: int) -> int:
         """
         Get count of distinct opportunities in the specified row range
@@ -469,9 +552,417 @@ class ScalableEnhancedProcessor:
             if cursor:
                 cursor.close()
 
+    def process_scalable_batch_producer_consumer(self, start_row_id: int, end_row_id: int, replace_existing_records: bool = False):
+        """
+        Process batch using producer/consumer architecture for optimal performance
+        """
+        with time_operation('process_scalable_batch_producer_consumer', {'start_row': start_row_id, 'end_row': end_row_id}):
+            start_time = time.time()
+            logger.info(f"🚀 Starting producer/consumer processing for rows {start_row_id} to {end_row_id}")
+            
+            # Create bounded queue for opportunities
+            opportunity_queue = queue.Queue(maxsize=100)
+            
+            # Consumer thread control
+            consumer_count = getattr(self, 'opportunity_workers', 2)
+            consumers_active = threading.Event()
+            consumers_active.set()
+            
+            # Error handling
+            processing_errors = []
+            error_lock = threading.Lock()
+            
+            def add_error(error_msg: str):
+                with error_lock:
+                    processing_errors.append(error_msg)
+                    logger.error(error_msg)
+            
+            # Producer thread function
+            def producer_thread():
+                """Producer thread that iterates through SQL results and creates Opportunity objects"""
+                try:
+                    if not self.sql_conn:
+                        add_error("SQL Server connection not available")
+                        return
+                    
+                    cursor = self.sql_conn.cursor()
+                    
+                    # Execute the SQL query
+                    selection_query = """
+                    SELECT A.OpportunityId, A.Title, B.description as Description, 
+                           D.fileId, D.fileLocation, A.postedDate, D.fileSizeBytes
+                    FROM FBOInternalAPI.Opportunities A 
+                    LEFT OUTER JOIN FBOInternalAPI.Descriptions B ON A.opportunityId=B.opportunityId 
+                    LEFT OUTER JOIN FBOInternalAPI.OpportunityAttachments C ON A.opportunityId=C.OpportunityId AND C.deletedFlag=0 
+                    LEFT OUTER JOIN FBOInternalAPI.OpportunityExtractedFiles D ON C.ExtractedFileId=D.fileId
+                    WHERE A.rowID >= ? and A.rowID <= ?
+                    ORDER BY A.rowID
+                    """
+                    
+                    cursor.execute(selection_query, (start_row_id, end_row_id))
+                    
+                    current_opportunity = None
+                    opportunities_produced = 0
+                    total_text_size_mb = 0.0
+                    producer_start_time = time.time()
+                    
+                    for row in cursor.fetchall():
+                        opportunity_id = row[0]
+                        title = row[1] if row[1] else ''
+                        description = row[2] if row[2] else ''
+                        file_id = row[3] if row[3] else None
+                        file_location = row[4] if row[4] else None
+                        posted_date = row[5].isoformat() if row[5] else None
+                        file_size_bytes = row[6] if row[6] else None
+                        
+                        # Log file size correlation data
+                        if file_size_bytes is not None:
+                            logger.debug(f"File size correlation: OpportunityId={opportunity_id}, FileId={file_id}, SizeBytes={file_size_bytes}")
+                        else:
+                            logger.debug(f"File size correlation: OpportunityId={opportunity_id}, FileId={file_id}, SizeBytes=NULL")
+                        
+                        # Check if this is a new opportunity
+                        if current_opportunity is None or current_opportunity.opportunity_id != opportunity_id:
+                            # Queue the previous opportunity if it exists
+                            if current_opportunity is not None:
+                                opportunity_queue.put(current_opportunity)
+                                opportunities_produced += 1
+                                
+                                # Monitor queue size
+                                queue_size = opportunity_queue.qsize()
+                                with self.stats_lock:
+                                    self.stats['queue_max_size'] = max(self.stats['queue_max_size'], queue_size)
+                                    self.stats['queue_samples'] += 1
+                                    self.stats['queue_avg_size'] = ((self.stats['queue_avg_size'] * (self.stats['queue_samples'] - 1)) + queue_size) / self.stats['queue_samples']
+                                
+                                if opportunities_produced % 5 == 0:
+                                    logger.info(f"Producer: {opportunities_produced} opportunities queued, queue size: {queue_size}")
+                            
+                            # Create new opportunity
+                            current_opportunity = Opportunity(opportunity_id, title, description, posted_date)
+                        
+                        # Add document to current opportunity if file data exists
+                        if file_id is not None and file_location is not None:
+                            # PRE-LOAD DOCUMENT TEXT IN PRODUCER THREAD
+                            file_path = self.replace_document_path(file_location)
+                            text_content = None
+                            load_error = None
+                            
+                            if os.path.exists(file_path):
+                                try:
+                                    with time_operation('producer_file_load', {'file_id': file_id, 'file_size_bytes': file_size_bytes}):
+                                        text_content = extract_text_from_file(file_path)
+                                        if text_content:
+                                            text_size_mb = len(text_content.encode('utf-8')) / (1024 * 1024)
+                                            total_text_size_mb += text_size_mb
+                                            logger.debug(f"Producer loaded file {file_id}: {text_size_mb:.2f}MB text")
+                                        else:
+                                            logger.warning(f"Producer: No text extracted from file: {file_path}")
+                                except Exception as e:
+                                    load_error = str(e)
+                                    logger.error(f"Producer: Error loading file {file_path}: {e}")
+                                    with self.stats_lock:
+                                        self.stats['file_load_errors'] += 1
+                            else:
+                                load_error = f"File not found: {file_path}"
+                                logger.warning(f"Producer: {load_error}")
+                                with self.stats_lock:
+                                    self.stats['file_load_errors'] += 1
+                            
+                            # Create document with pre-loaded text
+                            document = Document(file_id, file_location, file_size_bytes, text_content)
+                            document.load_error = load_error
+                            current_opportunity.add_document(document)
+                    
+                    # Don't forget the last opportunity
+                    if current_opportunity is not None:
+                        opportunity_queue.put(current_opportunity)
+                        opportunities_produced += 1
+                    
+                    # Calculate producer throughput
+                    producer_time = time.time() - producer_start_time
+                    if producer_time > 0:
+                        throughput_mb_per_sec = total_text_size_mb / producer_time
+                        with self.stats_lock:
+                            self.stats['producer_throughput_mb_per_sec'] = throughput_mb_per_sec
+                        logger.info(f"Producer throughput: {throughput_mb_per_sec:.2f} MB/sec ({total_text_size_mb:.2f}MB in {producer_time:.1f}s)")
+                    
+                    cursor.close()
+                    logger.info(f"Producer finished: {opportunities_produced} opportunities queued, {total_text_size_mb:.2f}MB text pre-loaded")
+                    
+                except Exception as e:
+                    add_error(f"Producer thread error: {e}")
+                finally:
+                    # Signal that producer is done by putting None sentinel
+                    for _ in range(consumer_count):
+                        opportunity_queue.put(None)
+            
+            # Consumer worker function
+            def consumer_worker(worker_id: int):
+                """Consumer worker that processes opportunities from the queue"""
+                opportunities_processed = 0
+                try:
+                    while consumers_active.is_set():
+                        try:
+                            # Get opportunity from queue with timeout
+                            opportunity = opportunity_queue.get(timeout=1.0)
+                            
+                            # Check for sentinel value (None means producer is done)
+                            if opportunity is None:
+                                logger.debug(f"Consumer {worker_id} received shutdown signal")
+                                break
+                            
+                            # Process the opportunity
+                            self._process_opportunity_simplified(opportunity, replace_existing_records)
+                            opportunities_processed += 1
+                            
+                            if opportunities_processed % 5 == 0:
+                                logger.info(f"Consumer {worker_id}: {opportunities_processed} opportunities processed")
+                            
+                        except queue.Empty:
+                            # Timeout occurred, check if we should continue
+                            continue
+                        except Exception as e:
+                            add_error(f"Consumer {worker_id} error processing opportunity: {e}")
+                        finally:
+                            try:
+                                opportunity_queue.task_done()
+                            except ValueError:
+                                # task_done() called more times than items in queue
+                                pass
+                
+                except Exception as e:
+                    add_error(f"Consumer {worker_id} fatal error: {e}")
+                finally:
+                    # Final flush for this consumer
+                    try:
+                        logger.debug(f"Consumer {worker_id} performing final flush...")
+                        self._flush_all_vector_collections()
+                        logger.info(f"Consumer {worker_id} finished: {opportunities_processed} opportunities processed")
+                    except Exception as e:
+                        add_error(f"Consumer {worker_id} final flush error: {e}")
+            
+            # Start producer thread
+            producer = threading.Thread(target=producer_thread, name="ProducerThread")
+            producer.start()
+            
+            # Start consumer workers
+            consumers = []
+            for i in range(consumer_count):
+                consumer = threading.Thread(target=consumer_worker, args=(i,), name=f"ConsumerWorker-{i}")
+                consumer.start()
+                consumers.append(consumer)
+            
+            # Wait for producer to finish
+            producer.join()
+            logger.info("Producer thread completed")
+            
+            # Wait for all consumers to finish
+            for consumer in consumers:
+                consumer.join()
+            logger.info("All consumer workers completed")
+            
+            # Stop memory monitoring and cleanup
+            self.stop_memory_monitoring()
+            
+            # Final processing time
+            processing_time = time.time() - start_time
+            self.stats['processing_time'] = processing_time
+            
+            # Log any errors that occurred
+            if processing_errors:
+                logger.error(f"Processing completed with {len(processing_errors)} errors:")
+                for error in processing_errors:
+                    logger.error(f"  - {error}")
+            
+            # Print performance summary
+            logger.info("🔍 PRODUCER/CONSUMER ANALYSIS COMPLETE - See detailed timing below:")
+            print_summary()
+            save_report(f"performance_report_{start_row_id}_{end_row_id}.json")
+            
+            self._log_final_stats(processing_time)
+            
+            # Return processing statistics
+            return {
+                'opportunities_processed': self.stats['opportunities_processed'],
+                'documents_embedded': self.stats['documents_embedded'],
+                'documents_skipped': self.stats['documents_skipped'],
+                'total_chunks_generated': self.stats['total_chunks_generated'],
+                'processing_time': processing_time,
+                'errors': self.stats['errors'] + len(processing_errors)
+            }
+
+    def _process_opportunity_simplified(self, opportunity: Opportunity, replace_existing_records: bool = False):
+        """Process a single opportunity using simplified architecture (no intra-opportunity parallelization)"""
+        with time_operation('process_opportunity_simplified', {'opportunity_id': opportunity.opportunity_id, 'document_count': len(opportunity.documents)}):
+            entities_to_store = []
+            
+            # Process title and description (fast, keep sequential)
+            if opportunity.opportunity_id not in self.processed_opportunities:
+                if opportunity.title:
+                    with time_operation('title_embedding'):
+                        self.process_title_embedding(
+                            opportunity.opportunity_id, 
+                            opportunity.title, 
+                            opportunity.posted_date, 
+                            replace_existing_records
+                        )
+                        self._update_stats('titles_embedded', 1)
+                
+                if opportunity.description:
+                    with time_operation('description_embedding'):
+                        self.process_description_embedding(
+                            opportunity.opportunity_id, 
+                            opportunity.description, 
+                            opportunity.posted_date, 
+                            replace_existing_records
+                        )
+                        self._update_stats('descriptions_embedded', 1)
+                    
+                    # Extract entities from description
+                    if self.enable_entity_extraction:
+                        try:
+                            desc_entities = self.entity_extractor.extract_entities(
+                                opportunity.description, 
+                                opportunity.opportunity_id, 
+                                'description'
+                            )
+                            entities_to_store.extend(desc_entities)
+                        except Exception as e:
+                            logger.error(f"Error extracting entities from description: {e}")
+                
+                self.processed_opportunities.add(opportunity.opportunity_id)
+            
+            # Process documents sequentially (simplified - no intra-opportunity parallelization)
+            for document in opportunity.documents:
+                try:
+                    file_entities = self._process_single_file_simplified(
+                        document, 
+                        opportunity.opportunity_id, 
+                        opportunity.posted_date, 
+                        replace_existing_records
+                    )
+                    entities_to_store.extend(file_entities)
+                except Exception as e:
+                    logger.error(f"Error processing document {document.file_location}: {e}")
+                    self._update_stats('errors', 1)
+            
+            # Process entities for this opportunity
+            if entities_to_store:
+                with time_operation('entity_storage', {'entity_count': len(entities_to_store)}):
+                    self._process_opportunity_entities(opportunity.opportunity_id, entities_to_store)
+            
+            # Only increment progress counter after ALL processing is complete for this opportunity
+            self._update_stats('opportunities_processed', 1)
+
+    def _process_single_file_simplified(self, document: Document, opportunity_id: str, posted_date: str, replace_existing_records: bool = False) -> List:
+        """Process a single document using simplified architecture"""
+        if document.file_id is None:
+            logger.warning(f"Skipping document with NULL file_id: {document.file_location}")
+            return []
+        
+        # Create context dict for performance logging with file size
+        context = {'file_id': document.file_id}
+        if document.file_size_bytes is not None:
+            context['file_size_bytes'] = document.file_size_bytes
+            context['file_size_mb'] = round(document.file_size_bytes / (1024 * 1024), 2) if document.file_size_bytes > 0 else 0
+        
+        with time_operation('process_single_file_simplified', context):
+            # Thread-safe file claim
+            if not self._try_claim_file_for_processing(document.file_id, replace_existing_records):
+                logger.debug(f"File {document.file_id} already processed")
+                return []
+            
+            # Check for file load errors from producer
+            if document.load_error:
+                logger.warning(f"Skipping file {document.file_id} due to load error: {document.load_error}")
+                return []
+
+            try:
+                # Use pre-loaded text content if available, otherwise fallback to file reading
+                if document.is_text_loaded():
+                    text_content = document.text_content
+                    logger.debug(f"Using pre-loaded text for file {document.file_id} ({document.get_memory_footprint_mb():.2f}MB)")
+                else:
+                    # Fallback: Extract text content (this should be rare with optimized producer)
+                    file_path = self.replace_document_path(document.file_location)
+                    if not os.path.exists(file_path):
+                        logger.warning(f"File not found: {file_path}")
+                        return []
+                    
+                    with time_operation('file_read_fallback', {'file_path': file_path, 'file_size_bytes': document.file_size_bytes}):
+                        text_content = extract_text_from_file(file_path)
+                        logger.warning(f"Consumer fallback file read for {document.file_id} - producer should have loaded this")
+                
+                if not text_content:
+                    logger.warning(f"No text content available for file {document.file_id}")
+                    return []
+                
+                # Process embeddings (this is now the main work for consumers)
+                with time_operation('text_chunk', {'text_length': len(text_content), 'file_size_bytes': document.file_size_bytes}):
+                    chunks = self.chunker.chunk_text(text_content)
+                    self._update_stats('total_chunks_generated', len(chunks))
+                
+                # Filter boilerplate
+                with time_operation('boilerplate_filter', {'chunk_count': len(chunks), 'file_size_bytes': document.file_size_bytes}):
+                    non_boilerplate_chunks = self.boilerplate_manager.filter_non_boilerplate_chunks(chunks)
+                    boilerplate_filtered = len(chunks) - len(non_boilerplate_chunks)
+                    self._update_stats('boilerplate_chunks_filtered', boilerplate_filtered)
+                
+                if non_boilerplate_chunks:
+                    # Process embeddings (primary GPU work)
+                    with time_operation('embedding_generate', {'chunk_count': len(non_boilerplate_chunks), 'file_size_bytes': document.file_size_bytes}):
+                        # Convert Document to file_info dict for compatibility
+                        file_info = {
+                            'file_id': document.file_id,
+                            'file_location': document.file_location,
+                            'file_size_bytes': document.file_size_bytes
+                        }
+                        self._process_embedding_chunks_batch(non_boilerplate_chunks, file_info, opportunity_id, posted_date)
+                        self._update_stats('documents_embedded', 1)
+                else:
+                    self._update_stats('documents_skipped', 1)
+                
+                # Extract entities
+                entities = []
+                if self.enable_entity_extraction and len(text_content.strip()) > 50:
+                    try:
+                        entities = self.entity_extractor.extract_entities(
+                            text_content, 
+                            opportunity_id, 
+                            'document', 
+                            document.file_id
+                        )
+                    except Exception as e:
+                        logger.error(f"Error extracting entities from file {document.file_id}: {e}")
+                
+                return entities
+                
+            except Exception as e:
+                logger.error(f"Error processing file {document.file_location}: {e}")
+                return []
+
     def process_scalable_batch(self, start_row_id: int, end_row_id: int, replace_existing_records: bool = False):
         """
         Process batch with intelligent scaling based on system resources
+        """
+        # Check if producer/consumer architecture is enabled
+        try:
+            from config import ENABLE_PRODUCER_CONSUMER_ARCHITECTURE
+            use_producer_consumer = ENABLE_PRODUCER_CONSUMER_ARCHITECTURE
+        except ImportError:
+            use_producer_consumer = False
+        
+        if use_producer_consumer:
+            logger.info("Using producer/consumer architecture for optimal performance")
+            return self.process_scalable_batch_producer_consumer(start_row_id, end_row_id, replace_existing_records)
+        else:
+            logger.info("Using legacy data grouping architecture")
+            return self._process_scalable_batch_legacy(start_row_id, end_row_id, replace_existing_records)
+
+    def _process_scalable_batch_legacy(self, start_row_id: int, end_row_id: int, replace_existing_records: bool = False):
+        """
+        Process batch with intelligent scaling based on system resources (legacy data grouping approach)
         """
         with time_operation('process_scalable_batch', {'start_row': start_row_id, 'end_row': end_row_id}):
             start_time = time.time()
@@ -538,7 +1029,12 @@ class ScalableEnhancedProcessor:
                     self.embedding_pool = None
                     self.use_pool = False
                 
-                # Flush all collections
+                # Final batch commit - flush any remaining operations
+                if self.enable_batch_commits and self.opportunities_since_last_flush > 0:
+                    logger.info(f"💾 Final commit: flushing all vector collections for remaining {self.opportunities_since_last_flush} opportunities")
+                    self._flush_all_vector_collections()
+                
+                # Flush all collections (final safety flush)
                 for collection_name, collection in self.collections.items():
                     collection.flush()
             
@@ -603,6 +1099,16 @@ class ScalableEnhancedProcessor:
             try:
                 self._process_single_opportunity(opportunity_id, data, replace_existing_records)
                 
+                # Batch commit logic - flush all collections after processing batch of opportunities
+                if self.enable_batch_commits:
+                    with self.batch_commit_lock:
+                        self.opportunities_since_last_flush += 1
+                        
+                        if self.opportunities_since_last_flush >= self.vector_batch_size:
+                            logger.info(f"💾 Committing batch: flushing all vector collections after {self.opportunities_since_last_flush} opportunities")
+                            self._flush_all_vector_collections()
+                            self.opportunities_since_last_flush = 0
+                
                 if i % 5 == 0:
                     progress = (i / len(grouped_data)) * 100
                     logger.info(f"📈 Progress: {i}/{len(grouped_data)} opportunities ({progress:.1f}%)")
@@ -651,7 +1157,6 @@ class ScalableEnhancedProcessor:
                                 entities_to_store.extend(desc_entities)
                 
                 self.processed_opportunities.add(opportunity_id)
-                self._update_stats('opportunities_processed', 1)
             
             # Process files with configurable parallelization
             if data['files']:
@@ -683,6 +1188,9 @@ class ScalableEnhancedProcessor:
             if entities_to_store:
                 with time_operation('entity_storage', {'entity_count': len(entities_to_store)}):
                     self._process_opportunity_entities(opportunity_id, entities_to_store)
+            
+            # Only increment progress counter after ALL processing is complete for this opportunity
+            self._update_stats('opportunities_processed', 1)
     
     def _process_files_parallel(self, files: List[Dict], opportunity_id: str, posted_date: str, worker_count: int, replace_existing_records: bool = False) -> List:
         """Process files in parallel for a single opportunity"""
@@ -793,10 +1301,19 @@ class ScalableEnhancedProcessor:
     def _process_single_file(self, file_info: Dict, opportunity_id: str, posted_date: str, replace_existing_records: bool = False) -> List:
         """Process a single file for both embeddings and entities"""
         file_id = file_info.get('file_id')
+        file_size_bytes = file_info.get('file_size_bytes')
+        
         if file_id is None:
             logger.warning(f"Skipping processing and mapping for file with NULL file_id: {file_info.get('file_location')}")
             return []
-        with time_operation('process_single_file', {'file_id': file_id}):
+            
+        # Create context dict for performance logging with file size
+        context = {'file_id': file_id}
+        if file_size_bytes is not None:
+            context['file_size_bytes'] = file_size_bytes
+            context['file_size_mb'] = round(file_size_bytes / (1024 * 1024), 2) if file_size_bytes > 0 else 0
+            
+        with time_operation('process_single_file', context):
             # THREAD-SAFE ATOMIC CLAIM: Try to claim file for processing
             # Note: No longer checking for duplicates since same file can be processed for different opportunities
             if file_id and not self._try_claim_file_for_processing(file_id, replace_existing_records):
@@ -809,26 +1326,26 @@ class ScalableEnhancedProcessor:
 
             # File is now CLAIMED by this thread - proceed with expensive processing
             try:
-                with time_operation('file_read', {'file_path': file_path}):
+                with time_operation('file_read', {'file_path': file_path, 'file_size_bytes': file_size_bytes}):
                     text_content = extract_text_from_file(file_path)
                     if not text_content:
                         logger.warning(f"No text extracted from file: {file_path}")
                         return []
                 
                 # Process embeddings
-                with time_operation('text_chunk', {'text_length': len(text_content)}):
+                with time_operation('text_chunk', {'text_length': len(text_content), 'file_size_bytes': file_size_bytes}):
                     chunks = self.chunker.chunk_text(text_content)
                     self._update_stats('total_chunks_generated', len(chunks))
                 
                 # Filter boilerplate - NOW VECTORIZED FOR 20x SPEEDUP
-                with time_operation('boilerplate_filter', {'chunk_count': len(chunks)}):
+                with time_operation('boilerplate_filter', {'chunk_count': len(chunks), 'file_size_bytes': file_size_bytes}):
                     non_boilerplate_chunks = self.boilerplate_manager.filter_non_boilerplate_chunks(chunks)
                     boilerplate_filtered = len(chunks) - len(non_boilerplate_chunks)
                     self._update_stats('boilerplate_chunks_filtered', boilerplate_filtered)
                 
                 if non_boilerplate_chunks:
                     # Batch process embeddings
-                    with time_operation('embedding_generate', {'chunk_count': len(non_boilerplate_chunks)}):
+                    with time_operation('embedding_generate', {'chunk_count': len(non_boilerplate_chunks), 'file_size_bytes': file_size_bytes}):
                         self._process_embedding_chunks_batch(non_boilerplate_chunks, file_info, opportunity_id, posted_date)
                         self._update_stats('documents_embedded', 1)
                     
@@ -857,7 +1374,7 @@ class ScalableEnhancedProcessor:
                             entities = []
                     else:
                         # Sequential entity extraction (Phase 1)
-                        with time_operation('entity_extract', {'text_length': len(text_content), 'file_id': file_info.get('file_id', 'unknown')}):
+                        with time_operation('entity_extract', {'text_length': len(text_content), 'file_id': file_info.get('file_id', 'unknown'), 'file_size_bytes': file_size_bytes}):
                             entities = self.entity_extractor.extract_entities(
                                 text_content, opportunity_id, 'document', file_info['file_id']
                             )
@@ -1035,6 +1552,25 @@ class ScalableEnhancedProcessor:
         if self.stats['total_chunks_generated'] > 0:
             chunks_per_second = self.stats['total_chunks_generated'] / processing_time
             logger.info(f"🔄 Chunks Processed per Second: {chunks_per_second:.1f}")
+        
+        # Queue monitoring and file I/O optimization statistics
+        if self.stats.get('queue_samples', 0) > 0:
+            logger.info("="*80)
+            logger.info("📈 PRODUCER/CONSUMER QUEUE ANALYSIS")
+            logger.info("="*80)
+            logger.info(f"📊 Queue Max Size: {self.stats['queue_max_size']}")
+            logger.info(f"📊 Queue Average Size: {self.stats['queue_avg_size']:.1f}")
+            logger.info(f"📊 Queue Samples: {self.stats['queue_samples']}")
+            logger.info(f"🚀 Producer Throughput: {self.stats['producer_throughput_mb_per_sec']:.2f} MB/sec")
+            logger.info(f"❌ File Load Errors: {self.stats['file_load_errors']}")
+            
+            # Queue efficiency analysis
+            if self.stats['queue_avg_size'] < 2.0:
+                logger.warning("⚠️  Low queue size suggests producer may be bottleneck")
+            elif self.stats['queue_avg_size'] > 50:
+                logger.warning("⚠️  High queue size suggests consumer may be bottleneck")
+            else:
+                logger.info("✅ Queue size indicates good producer/consumer balance")
     
     # Include essential supporting methods from the base processor
     def get_opportunities_data(self, start_row_id: int, end_row_id: int) -> List[Dict]:
@@ -1049,7 +1585,7 @@ class ScalableEnhancedProcessor:
             
             selection_query = """
             SELECT A.OpportunityId, A.Title, B.description as Description, 
-                   D.fileId, D.fileLocation, A.postedDate
+                   D.fileId, D.fileLocation, A.postedDate, D.fileSizeBytes
             FROM FBOInternalAPI.Opportunities A 
             LEFT OUTER JOIN FBOInternalAPI.Descriptions B ON A.opportunityId=B.opportunityId 
             LEFT OUTER JOIN FBOInternalAPI.OpportunityAttachments C ON A.opportunityId=C.OpportunityId AND C.deletedFlag=0 
@@ -1068,7 +1604,8 @@ class ScalableEnhancedProcessor:
                     'description': row[2] if row[2] else '',
                     'file_id': row[3] if row[3] else None,
                     'file_location': row[4] if row[4] else None,
-                    'posted_date': row[5].isoformat() if row[5] else None
+                    'posted_date': row[5].isoformat() if row[5] else None,
+                    'file_size_bytes': row[6] if row[6] else None
                 })
             
             logger.info(f"Retrieved {len(results)} records from SQL Server")
@@ -1097,7 +1634,8 @@ class ScalableEnhancedProcessor:
             if record['file_id'] and record['file_location']:
                 grouped_data[opp_id]['files'].append({
                     'file_id': record['file_id'],
-                    'file_location': record['file_location']
+                    'file_location': record['file_location'],
+                    'file_size_bytes': record['file_size_bytes']
                 })
         
         return grouped_data
@@ -1212,7 +1750,7 @@ class ScalableEnhancedProcessor:
                         [1],                        # total_chunks (1 for single chunk)
                         [title]                     # text_content field
                     ])
-                    collection.flush()
+                    # Note: Removed immediate flush() for better performance
                 
                 logger.debug(f"Inserted title embedding for opportunity {opportunity_id}")
                 return True
@@ -1263,7 +1801,7 @@ class ScalableEnhancedProcessor:
                         total_chunks_list,          # total_chunks
                         text_contents               # text_content field
                     ])
-                    collection.flush()
+                    # Note: Removed immediate flush() for better performance
                 
                 logger.debug(f"Inserted {total_chunks} description embedding chunks for opportunity {opportunity_id}")
                 return True

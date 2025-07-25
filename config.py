@@ -32,20 +32,27 @@ ENTITY_PERSON_CONF_THRESHOLD = 0.8   # Person confidence threshold
 ENTITY_TITLE_CONF_THRESHOLD = 0.8    # Title confidence threshold
 ENTITY_CONF_THRESHOLD = 0.8          # General entity confidence threshold for storage
 
-# Parallel Processing Configuration - SINGLE WORKER OPTIMAL (PROVEN)
-MAX_OPPORTUNITY_WORKERS = 1           # Single worker architecture optimal for GPU
-MAX_FILE_WORKERS_PER_OPPORTUNITY = 1  # Sequential file processing (prevent model overload)
-ENABLE_PARALLEL_PROCESSING = False    # Single worker architecture for maximum GPU performance
+# Parallel Processing Configuration - ENABLED FOR BETTER THROUGHPUT
+MAX_OPPORTUNITY_WORKERS = 4           # Enable 4 workers for testing performance scaling
+MAX_FILE_WORKERS_PER_OPPORTUNITY = 2  # Allow parallel file processing for better throughput
+ENABLE_PARALLEL_PROCESSING = True     # Enable parallel processing for better performance
+
+# Producer/Consumer Architecture - NEW OPTIMIZED APPROACH
+ENABLE_PRODUCER_CONSUMER_ARCHITECTURE = True  # Use new producer/consumer model for maximum performance
 
 # Dynamic File Worker Scaling (for opportunities with many files) - CONTROLLED SCALING
 ENABLE_DYNAMIC_FILE_WORKERS = False  # Disable dynamic scaling to prevent resource contention (was True)
 MIN_FILES_FOR_SCALING = 8            # Minimum files to trigger additional file workers (increased from 4 - much more conservative)
 MAX_DYNAMIC_FILE_WORKERS = 2         # Maximum file workers for high-file-count opportunities (reduced from 4 - minimal threading)
 
-# Performance Optimization Settings - OPTIMAL FOR REALISTIC CONTENT
-EMBEDDING_BATCH_SIZE = 256               # OPTIMAL for realistic federal procurement documents (7,879 sentences/sec)
-ENTITY_BATCH_SIZE = 1000                 # Doubled entity processing batches
-VECTOR_INSERT_BATCH_SIZE = 1600          # Doubled vector database batch size
+# Performance Optimization Settings - OPTIMIZED FOR LARGE BATCHES
+EMBEDDING_BATCH_SIZE = 512               # Increased from 256 for better GPU utilization
+ENTITY_BATCH_SIZE = 1000                 # Keep entity batch size high
+VECTOR_INSERT_BATCH_SIZE = 1000          # Number of OpportunityIds to process before flushing all collections (1M record batches)
+
+# Vector Database Flush Management - OPPORTUNITY-BASED COMMITS
+# Flush all vector collections after processing N opportunities (like a transaction commit)
+ENABLE_OPPORTUNITY_BATCH_COMMITS = True  # Flush all collections after batch of opportunities
 
 # Resource Management - GPU OPTIMIZED (15.5GB VRAM available)
 MAX_MEMORY_USAGE_MB = 8192           # Increased for GPU workloads (was 4096)
@@ -64,7 +71,7 @@ AGGRESSIVE_I_O_OPTIMIZATION = True          # Optimize for I/O bound workloads (
 ENABLE_VECTORIZED_SIMILARITIES = True       # Use vectorized boilerplate filtering (20x speedup)
 ENABLE_BATCH_VECTOR_INSERTS = True          # Batch database vector operations (3x speedup potential)
 ENABLE_PARALLEL_ENTITY_EXTRACTION = True    # Run entities parallel with embeddings (Phase 2)
-ENABLE_CHUNK_EMBEDDING_CACHE = True         # Cache duplicate chunk embeddings (Phase 2)
+ENABLE_CHUNK_EMBEDDING_CACHE = False        # DISABLED: GPU is fast enough, cache fragments batches and wastes memory
 
 # Phase 2 Optimization Settings - MAXIMUM GPU CACHE
 CHUNK_CACHE_SIZE = 50000                     # Doubled cache for maximum GPU performance
@@ -90,5 +97,5 @@ ENABLE_EMBEDDING_MODEL_POOL = False         # Single worker - no need for pool
 # GPU Configuration - OPTIMAL SINGLE WORKER PERFORMANCE (15.5GB VRAM)
 ENABLE_GPU_ACCELERATION = True              # Enable GPU acceleration with PyTorch 2.9+ Blackwell support
 GPU_DEVICE = 'cuda'                         # CUDA device ('cuda' or 'cuda:0', 'cuda:1', etc.)
-GPU_BATCH_SIZE_MULTIPLIER = 1               # Direct batch size control (32,768 = optimal)
+GPU_BATCH_SIZE_MULTIPLIER = 2               # 2x multiplier for GPU: 512 * 2 = 1024 effective batch (OPTIMAL)
 FALLBACK_TO_CPU = True                      # Fallback to CPU if GPU not available

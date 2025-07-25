@@ -116,6 +116,15 @@ health_status_model = api.model('HealthStatus', {
     'features': fields.List(fields.String, description='Enabled features')
 })
 
+# Error response model for consistent error handling
+error_response_model = api.model('ErrorResponse', {
+    'error': fields.String(required=True, description='Error message describing what went wrong'),
+    'error_code': fields.String(required=True, description='Machine-readable error code'),
+    'details': fields.Raw(description='Additional error details (optional)'),
+    'timestamp': fields.DateTime(description='When the error occurred'),
+    'request_id': fields.String(description='Unique identifier for this request (for debugging)')
+})
+
 # Search models
 similarity_search_model = api.model('SimilaritySearchRequest', {
     'query': fields.String(required=True, description='Search query text', example='machine learning software development'),
@@ -201,6 +210,28 @@ class ProcessingTask:
     end_time: Optional[datetime] = None
     error_message: Optional[str] = None
     phase2_optimizations: str = "enabled"
+
+def create_error_response(error_message: str, error_code: str, status_code: int = 400, details: Optional[Dict] = None, request_id: Optional[str] = None):
+    """Create a standardized error response with proper structure and logging"""
+    if request_id is None:
+        request_id = str(uuid.uuid4())
+    
+    error_response = {
+        'error': error_message,
+        'error_code': error_code,
+        'timestamp': datetime.now().isoformat(),
+        'request_id': request_id
+    }
+    
+    if details:
+        error_response['details'] = details
+    
+    # Log the error for debugging
+    logger.error(f"API Error [{request_id}]: {error_code} - {error_message}")
+    if details:
+        logger.error(f"Error details [{request_id}]: {details}")
+    
+    return error_response, status_code
 
 def initialize_services():
     """Initialize the processor and analyzer services"""
@@ -328,7 +359,8 @@ def process_embeddings_background(task_id: str, start_row_id: int, end_row_id: i
 @health_ns.route('')
 class HealthCheck(Resource):
     @health_ns.doc('health_check')
-    @health_ns.marshal_with(health_status_model)
+    @health_ns.response(200, 'Success', health_status_model)
+    @health_ns.response(500, 'Internal Server Error', error_response_model)
     def get(self):
         """Health check endpoint"""
         try:
@@ -356,7 +388,9 @@ class HealthCheck(Resource):
 class ProcessEmbeddings(Resource):
     @embedding_ns.doc('process_embeddings')
     @embedding_ns.expect(process_embeddings_model)
-    @embedding_ns.marshal_with(process_embeddings_response_model)
+    @embedding_ns.response(202, 'Processing Started', process_embeddings_response_model)
+    @embedding_ns.response(400, 'Bad Request', error_response_model)
+    @embedding_ns.response(500, 'Internal Server Error', error_response_model)
     def post(self):
         """Process embeddings for a range of opportunities"""
         try:
@@ -364,29 +398,33 @@ class ProcessEmbeddings(Resource):
             
             # Validate input
             if not data:
-                return {'error': 'No JSON data provided'}, 400
+                return create_error_response('No JSON data provided', 'MISSING_REQUEST_DATA')
             
             start_row_id = data.get('start_row_id')
             end_row_id = data.get('end_row_id')
             reprocess = data.get('reprocess', False)
             
             if start_row_id is None or end_row_id is None:
-                return {'error': 'start_row_id and end_row_id are required'}, 400
+                return create_error_response('start_row_id and end_row_id are required', 'MISSING_REQUIRED_FIELDS')
             
             if not isinstance(start_row_id, int) or not isinstance(end_row_id, int):
-                return {'error': 'start_row_id and end_row_id must be integers'}, 400
+                return create_error_response('start_row_id and end_row_id must be integers', 'INVALID_DATA_TYPE')
             
             if start_row_id < 1 or end_row_id < 1:
-                return {'error': 'start_row_id and end_row_id must be positive integers'}, 400
+                return create_error_response('start_row_id and end_row_id must be positive integers', 'INVALID_RANGE')
             
             if start_row_id > end_row_id:
-                return {'error': 'start_row_id must be less than or equal to end_row_id'}, 400
+                return create_error_response('start_row_id must be less than or equal to end_row_id', 'INVALID_RANGE')
             
             # Check batch size limits
             batch_size = end_row_id - start_row_id + 1
             max_batch = MAX_BATCH_SIZE if 'MAX_BATCH_SIZE' in globals() else 1000
             if batch_size > max_batch:
-                return {'error': f'Batch size ({batch_size}) exceeds maximum allowed ({max_batch})'}, 400
+                return create_error_response(
+                    f'Batch size ({batch_size}) exceeds maximum allowed ({max_batch})', 
+                    'BATCH_SIZE_EXCEEDED',
+                    details={'requested_batch_size': batch_size, 'max_batch_size': max_batch}
+                )
             
             # Generate task ID
             task_id = str(uuid.uuid4())
@@ -425,13 +463,15 @@ class ProcessEmbeddings(Resource):
         except Exception as e:
             logger.error(f"Error processing embeddings: {e}")
             traceback.print_exc()
-            return {'error': 'Internal server error'}, 500
+            return create_error_response('Internal server error', 'INTERNAL_ERROR', details={'exception': str(e)})
 
 # Processing status endpoints
 @status_ns.route('/processing-status/<string:task_id>')
 class ProcessingStatusById(Resource):
     @status_ns.doc('get_processing_status_by_id')
-    @status_ns.marshal_with(processing_status_model)
+    @status_ns.response(200, 'Success', processing_status_model)
+    @status_ns.response(404, 'Task Not Found', error_response_model)
+    @status_ns.response(500, 'Internal Server Error', error_response_model)
     def get(self, task_id):
         """Get processing status for a specific task"""
         try:
@@ -439,7 +479,7 @@ class ProcessingStatusById(Resource):
                 task = processing_tasks.get(task_id)
             
             if not task:
-                return {'error': 'Task not found'}, 404
+                return create_error_response('Task not found', 'TASK_NOT_FOUND', status_code=404)
             
             # Calculate progress and timing
             progress_percentage = 0.0
@@ -499,11 +539,12 @@ class ProcessingStatusById(Resource):
             
         except Exception as e:
             logger.error(f"Error getting processing status: {e}")
-            return {'error': 'Internal server error'}, 500
+            return create_error_response('Internal server error', 'STATUS_ERROR', details={'exception': str(e)})
 
 @status_ns.route('/processing-status')
 class ProcessingStatusAll(Resource):
     @status_ns.doc('get_all_processing_status')
+    @status_ns.response(500, 'Internal Server Error', error_response_model)
     def get(self):
         """Get status of all processing tasks"""
         try:
@@ -545,13 +586,15 @@ class ProcessingStatusAll(Resource):
             
         except Exception as e:
             logger.error(f"Error getting all processing status: {e}")
-            return {'error': 'Internal server error'}, 500
+            return create_error_response('Internal server error', 'STATUS_ERROR', details={'exception': str(e)})
 
 # Search endpoints
 @search_ns.route('/similarity-search')
 class SimilaritySearch(Resource):
     @search_ns.doc('similarity_search')
     @search_ns.expect(similarity_search_model)
+    @search_ns.response(400, 'Bad Request', error_response_model)
+    @search_ns.response(500, 'Internal Server Error', error_response_model)
     # @search_ns.marshal_with(similarity_search_response_model)  # Temporarily disable marshalling
     def post(self):
         """Perform aggregated similarity search using a text query"""
@@ -561,11 +604,11 @@ class SimilaritySearch(Resource):
             
             # Validate input
             if not data:
-                return {'error': 'No JSON data provided'}, 400
+                return create_error_response('No JSON data provided', 'MISSING_REQUEST_DATA')
             
             query = data.get('query', '')
             if not query or not query.strip():
-                return {'error': 'Query parameter is required and cannot be empty'}, 400
+                return create_error_response('Query parameter is required and cannot be empty', 'MISSING_QUERY')
             
             limit = data.get('limit', 10)
             title_threshold = data.get('title_similarity_threshold', 0.5)
@@ -578,13 +621,15 @@ class SimilaritySearch(Resource):
             
             # Validate parameters
             if not isinstance(limit, int) or limit < 1 or limit > 100:
-                return {'error': 'Limit must be an integer between 1 and 100'}, 400
+                return create_error_response('Limit must be an integer between 1 and 100', 'INVALID_LIMIT', 
+                                           details={'provided_limit': limit, 'valid_range': '1-100'})
             
             for threshold, name in [(title_threshold, 'title_similarity_threshold'),
                                   (description_threshold, 'description_similarity_threshold'),
                                   (document_threshold, 'document_similarity_threshold')]:
                 if not isinstance(threshold, (int, float)) or not 0.0 <= threshold <= 1.0:
-                    return {'error': f'{name} must be a number between 0.0 and 1.0'}, 400
+                    return create_error_response(f'{name} must be a number between 0.0 and 1.0', 'INVALID_THRESHOLD',
+                                               details={'parameter': name, 'provided_value': threshold, 'valid_range': '0.0-1.0'})
             
             # Perform aggregated search using the processor
             results = processor.search_similar_documents(
@@ -612,13 +657,15 @@ class SimilaritySearch(Resource):
         except Exception as e:
             logger.error(f"Aggregated similarity search failed: {e}")
             traceback.print_exc()
-            return {'error': 'Internal server error'}, 500
+            return create_error_response('Internal server error', 'SEARCH_ERROR', details={'exception': str(e)})
 
 @search_ns.route('/opportunity-search')
 class OpportunitySearch(Resource):
     @search_ns.doc('opportunity_search')
     @search_ns.expect(opportunity_search_model)
-    @search_ns.marshal_with(opportunity_search_response_model)
+    @search_ns.response(200, 'Success', opportunity_search_response_model)
+    @search_ns.response(400, 'Bad Request', error_response_model)
+    @search_ns.response(500, 'Internal Server Error', error_response_model)
     def post(self):
         """Perform opportunity-based similarity search using opportunity GUIDs"""
         try:
@@ -627,11 +674,11 @@ class OpportunitySearch(Resource):
             
             # Validate input
             if not data:
-                return {'error': 'No JSON data provided'}, 400
+                return create_error_response('No JSON data provided', 'MISSING_REQUEST_DATA')
             
             opportunity_ids = data.get('opportunity_ids', [])
             if not opportunity_ids or not isinstance(opportunity_ids, list):
-                return {'error': 'opportunity_ids must be a non-empty list'}, 400
+                return create_error_response('opportunity_ids must be a non-empty list', 'INVALID_OPPORTUNITY_IDS')
             
             # Validate GUID format
             import uuid
@@ -639,7 +686,7 @@ class OpportunitySearch(Resource):
                 for opp_id in opportunity_ids:
                     uuid.UUID(opp_id)  # This will raise ValueError if not a valid GUID
             except (ValueError, TypeError):
-                return {'error': 'All opportunity_ids must be valid GUIDs'}, 400
+                return create_error_response('All opportunity_ids must be valid GUIDs', 'INVALID_GUID_FORMAT')
             
             # Extract parameters with defaults
             title_threshold = data.get('title_similarity_threshold', 0.5)
@@ -655,26 +702,31 @@ class OpportunitySearch(Resource):
                                   (description_threshold, 'description_similarity_threshold'),
                                   (document_threshold, 'document_similarity_threshold')]:
                 if not isinstance(threshold, (int, float)) or not 0.0 <= threshold <= 1.0:
-                    return {'error': f'{name} must be a number between 0.0 and 1.0'}, 400
+                    return create_error_response(f'{name} must be a number between 0.0 and 1.0', 'INVALID_THRESHOLD',
+                                               details={'parameter': name, 'provided_value': threshold, 'valid_range': '0.0-1.0'})
             
             if not isinstance(boost_multiplier, (int, float)) or boost_multiplier < 0.0:
-                return {'error': 'document_sow_boost_multiplier must be a non-negative number'}, 400
+                return create_error_response('document_sow_boost_multiplier must be a non-negative number', 'INVALID_BOOST_MULTIPLIER',
+                                           details={'provided_value': boost_multiplier, 'valid_range': '>=0.0'})
             
             if not isinstance(limit, int) or limit < 1 or limit > 1000:
-                return {'error': 'Limit must be an integer between 1 and 1000'}, 400
+                return create_error_response('Limit must be an integer between 1 and 1000', 'INVALID_LIMIT',
+                                           details={'provided_limit': limit, 'valid_range': '1-1000'})
             
             # Validate date format if provided
             if start_date:
                 try:
                     datetime.strptime(start_date, '%Y-%m-%d')
                 except ValueError:
-                    return {'error': 'start_posted_date must be in YYYY-MM-DD format'}, 400
+                    return create_error_response('start_posted_date must be in YYYY-MM-DD format', 'INVALID_DATE_FORMAT',
+                                               details={'provided_date': start_date, 'expected_format': 'YYYY-MM-DD'})
             
             if end_date:
                 try:
                     datetime.strptime(end_date, '%Y-%m-%d')
                 except ValueError:
-                    return {'error': 'end_posted_date must be in YYYY-MM-DD format'}, 400
+                    return create_error_response('end_posted_date must be in YYYY-MM-DD format', 'INVALID_DATE_FORMAT',
+                                               details={'provided_date': end_date, 'expected_format': 'YYYY-MM-DD'})
             
             # Generate request ID
             request_id = str(uuid.uuid4())
@@ -708,7 +760,7 @@ class OpportunitySearch(Resource):
         except Exception as e:
             logger.error(f"Opportunity search failed: {e}")
             traceback.print_exc()
-            return {'error': 'Internal server error'}, 500
+            return create_error_response('Internal server error', 'SEARCH_ERROR', details={'exception': str(e)})
 
 # Legacy endpoints for backward compatibility (without OpenAPI docs)
 @app.route('/health', methods=['GET'])

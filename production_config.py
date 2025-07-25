@@ -32,8 +32,8 @@ API_VERSION = 'v1'
 API_PREFIX = f'/api/{API_VERSION}'
 
 # Request limits
-MAX_BATCH_SIZE = 1000
-DEFAULT_BATCH_SIZE = 100
+MAX_BATCH_SIZE = 1000000  # Support up to 1 million rows for large-scale processing
+DEFAULT_BATCH_SIZE = 1000  # Reasonable default for typical use
 MAX_SEARCH_LIMIT = 100
 DEFAULT_SEARCH_LIMIT = 10
 

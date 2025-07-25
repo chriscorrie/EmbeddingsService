@@ -58,17 +58,6 @@ def setup_vector_database():
                     FieldSchema(name="file_location", dtype=DataType.VARCHAR, max_length=500),
                     FieldSchema(name="section_type", dtype=DataType.VARCHAR, max_length=50),
                 ]
-            },
-            "boilerplate": {
-                "description": "Boilerplate Document Embeddings for Semantic Removal",
-                "fields": [
-                    FieldSchema(name="id", dtype=DataType.INT64, is_primary=True, auto_id=True),
-                    FieldSchema(name="boilerplate_file", dtype=DataType.VARCHAR, max_length=200),
-                    FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=384),
-                    FieldSchema(name="chunk_index", dtype=DataType.INT32),
-                    FieldSchema(name="total_chunks", dtype=DataType.INT32),
-                    FieldSchema(name="text_content", dtype=DataType.VARCHAR, max_length=2000),
-                ]
             }
         }
         
@@ -89,7 +78,7 @@ def setup_vector_database():
                 logger.info(f"Created collection: {collection_name}")
                 
                 # Create COSINE index for embedding fields (better for search)
-                embedding_collections = ["opportunity_titles", "opportunity_descriptions", "opportunity_documents", "boilerplate"]
+                embedding_collections = ["opportunity_titles", "opportunity_descriptions", "opportunity_documents"]
                 if collection_name in embedding_collections:
                     # Enhanced index parameters for better search precision
                     index_params = {

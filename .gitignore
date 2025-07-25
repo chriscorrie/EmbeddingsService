@@ -52,6 +52,13 @@ docker-compose.override.yml
 *.log
 logs/
 
+# Performance reports and benchmarks
+performance_report_*.json
+benchmark_results*.json
+gpu_optimization_results*.json
+*_performance.json
+*_benchmark.json
+
 # Milvus data
 milvus_data/
 etcd_data/

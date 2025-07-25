@@ -8,7 +8,6 @@ import numpy as np
 from typing import List, Tuple, Dict, Any
 import logging
 from sklearn.metrics.pairwise import cosine_similarity
-from pymilvus import Collection
 
 logger = logging.getLogger(__name__)
 
@@ -29,16 +28,15 @@ class SemanticBoilerplateManager:
         self.similarity_threshold = similarity_threshold
         self.boilerplate_embeddings_cache: List[np.ndarray] = []
         self.boilerplate_matrix: np.ndarray = None  # Vectorized matrix for fast similarity
-        self.boilerplate_collection = None
         self._cache_loaded = False
         
-    def setup_boilerplate_collection(self, collection: Collection):
-        """Set up the boilerplate collection reference"""
-        self.boilerplate_collection = collection
+    def setup_boilerplate_collection(self, collection):
+        """Legacy method - no longer needed since we don't use database storage"""
+        pass  # No-op: boilerplate is now cached directly in memory
         
     def process_boilerplate_documents(self, boilerplate_docs_path: str, chunker) -> int:
         """
-        Process boilerplate documents and store their embeddings
+        Process boilerplate documents and cache their embeddings directly in memory
         
         Args:
             boilerplate_docs_path: Path to directory containing boilerplate documents
@@ -51,14 +49,13 @@ class SemanticBoilerplateManager:
             logger.warning(f"Boilerplate documents path not found: {boilerplate_docs_path}")
             return 0
             
-        if not self.boilerplate_collection:
-            logger.error("Boilerplate collection not set up")
-            return 0
-            
         # Import here to avoid circular imports
         from process_documents import extract_text_from_file
         
         total_chunks = 0
+        embeddings_cache = []
+        
+        logger.info(f"Processing boilerplate documents from: {boilerplate_docs_path}")
         
         # Process each boilerplate document
         for filename in os.listdir(boilerplate_docs_path):
@@ -81,82 +78,38 @@ class SemanticBoilerplateManager:
                     logger.warning(f"No chunks generated from boilerplate file: {filename}")
                     continue
                 
-                # Generate embeddings for each chunk
-                chunk_data = []
+                # Generate embeddings for each chunk and cache directly in memory
                 for i, chunk in enumerate(chunks):
                     embedding = self.embeddings_model.encode(chunk, normalize_embeddings=True)
-                    
-                    chunk_data.append([
-                        filename,                          # boilerplate_file
-                        embedding.tolist(),                # embedding  
-                        i,                                 # chunk_index
-                        len(chunks),                       # total_chunks
-                        chunk[:2000]                       # chunk_text (truncated to fit schema)
-                    ])
+                    embeddings_cache.append(embedding)
                 
-                # Insert chunks into boilerplate collection
-                if chunk_data:
-                    # Transpose data for Milvus format
-                    data = [
-                        [item[0] for item in chunk_data],  # boilerplate_file
-                        [item[1] for item in chunk_data],  # embedding
-                        [item[2] for item in chunk_data],  # chunk_index
-                        [item[3] for item in chunk_data],  # total_chunks
-                        [item[4] for item in chunk_data],  # chunk_text
-                    ]
-                    
-                    self.boilerplate_collection.insert(data)
-                    total_chunks += len(chunks)
-                    logger.info(f"Processed boilerplate file {filename}: {len(chunks)} chunks")
+                total_chunks += len(chunks)
+                logger.info(f"Processed boilerplate file {filename}: {len(chunks)} chunks")
                 
             except Exception as e:
                 logger.error(f"Error processing boilerplate file {filename}: {e}")
                 continue
         
-        # Flush to ensure data is written
-        if total_chunks > 0:
-            self.boilerplate_collection.flush()
-            logger.info(f"Processed {total_chunks} boilerplate chunks total")
+        # Cache embeddings directly in memory
+        if embeddings_cache:
+            self.boilerplate_embeddings_cache = embeddings_cache
+            self.boilerplate_matrix = np.vstack(embeddings_cache)
+            self._cache_loaded = True
+            logger.info(f"Cached {len(embeddings_cache)} boilerplate embeddings directly in memory")
+            logger.info(f"Created boilerplate matrix: {self.boilerplate_matrix.shape}")
+        else:
+            logger.warning("No boilerplate embeddings were processed")
             
         return total_chunks
     
     def load_boilerplate_embeddings_cache(self):
-        """Load all boilerplate embeddings into memory cache for fast comparison"""
+        """Load boilerplate embeddings - now a no-op since embeddings are cached during processing"""
         if self._cache_loaded:
+            logger.debug("Boilerplate embeddings already cached in memory")
             return
             
-        if not self.boilerplate_collection:
-            logger.warning("Boilerplate collection not available - no caching")
-            return
-            
-        try:
-            # Query all boilerplate embeddings
-            results = self.boilerplate_collection.query(
-                expr="chunk_index >= 0",  # Get all records
-                output_fields=["embedding"],
-                limit=10000  # Should be enough for boilerplate docs
-            )
-            
-            # Convert to numpy arrays and cache
-            self.boilerplate_embeddings_cache = []
-            for result in results:
-                embedding = np.array(result["embedding"])
-                self.boilerplate_embeddings_cache.append(embedding)
-            
-            # OPTIMIZATION: Pre-compute vectorized matrix for fast similarity calculations
-            if self.boilerplate_embeddings_cache:
-                self.boilerplate_matrix = np.vstack(self.boilerplate_embeddings_cache)
-                logger.info(f"Created boilerplate matrix: {self.boilerplate_matrix.shape}")
-            else:
-                self.boilerplate_matrix = None
-            
-            self._cache_loaded = True
-            logger.info(f"Cached {len(self.boilerplate_embeddings_cache)} boilerplate embeddings")
-            
-        except Exception as e:
-            logger.error(f"Error loading boilerplate embeddings cache: {e}")
-            self.boilerplate_embeddings_cache = []
-            self.boilerplate_matrix = None
+        logger.warning("load_boilerplate_embeddings_cache() called but no embeddings cached. "
+                      "Ensure process_boilerplate_documents() was called first.")
     
     def is_boilerplate_chunk(self, chunk_embedding: np.ndarray) -> bool:
         """
