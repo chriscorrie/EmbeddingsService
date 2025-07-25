@@ -179,6 +179,7 @@ Visit `http://localhost:5000/docs/` for full interactive API documentation with 
 ├── requirements.txt                    # Dependencies
 ├── manage_service.sh                   # Service management
 ├── document-embedding-api.service      # Systemd service
+├── debug/                             # Debug and diagnostic scripts
 ├── venv/                              # Virtual environment
 ├── logs/                              # Application logs
 └── entities.db                       # Entity database
@@ -186,6 +187,15 @@ Visit `http://localhost:5000/docs/` for full interactive API documentation with 
 
 ## Archive
 Legacy files moved to: `/home/chris/document_embedding_archive/`
+
+## Development and Debugging
+All debug, diagnostic, and testing scripts are organized in the `debug/` directory:
+- **Location**: `debug/` folder contains all debugging scripts
+- **Naming**: Use `debug_[component]_[issue].py` format
+- **Usage**: Run from project root: `python debug/debug_script_name.py`
+- **Documentation**: See `debug/README.md` for complete guidelines
+
+**For AI Assistants**: Always place new debug scripts in the `debug/` directory, never in the project root.
 
 ## Client Integration
 See `/home/chris/EmbeddingsClient/` for C# client implementation.

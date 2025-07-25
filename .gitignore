@@ -59,6 +59,11 @@ gpu_optimization_results*.json
 *_performance.json
 *_benchmark.json
 
+# Temporary debug files
+debug/temp_*.py
+debug/*_temp.py
+debug/scratch_*.py
+
 # Milvus data
 milvus_data/
 etcd_data/

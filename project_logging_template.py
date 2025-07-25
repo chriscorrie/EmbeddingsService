@@ -75,8 +75,21 @@ GITIGNORE_PATTERNS = [
     "benchmark_results*.json", 
     "gpu_optimization_results*.json",
     "*_performance.json",
-    "*_benchmark.json"
+    "*_benchmark.json",
+    "",
+    "# Debug organization",
+    "debug/temp_*.py",
+    "debug/*_temp.py", 
+    "debug/scratch_*.py"
 ]
+
+# Debug folder organization guidelines
+DEBUG_GUIDELINES = {
+    'folder': 'debug/',
+    'naming_convention': 'debug_[component]_[issue].py',
+    'temp_files': 'temp_*.py (ignored by git)',
+    'readme': 'debug/README.md (create documentation)'
+}
 
 def create_gitignore():
     """Create or update .gitignore with recommended patterns."""

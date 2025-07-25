@@ -186,6 +186,13 @@ LOGGING_PATTERNS = {
     'processing_logs': '*_processing.log'
 }
 
+DEBUG_GUIDELINES = {
+    'folder': 'debug/',
+    'naming_pattern': 'debug_[component]_[issue].py',
+    'temp_prefix': 'temp_',
+    'scratch_prefix': 'scratch_'
+}
+
 def get_gitignore_patterns() -> list:
     """
     Get recommended gitignore patterns for log and performance files.
