@@ -5,7 +5,7 @@ Test the exact phrase "Information Collection Management"
 
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.abspath('.')))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from scalable_processor import ScalableEnhancedProcessor
 from pymilvus import connections, Collection

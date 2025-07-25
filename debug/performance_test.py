@@ -11,7 +11,7 @@ from typing import Dict, Any
 from pathlib import Path
 
 # Add the current directory to Python path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 def measure_performance(processor_class, start_row: int, end_row: int, name: str) -> Dict[str, Any]:
     """

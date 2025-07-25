@@ -36,7 +36,7 @@
 ```bash
 # Check overall status
 cd /home/chris/Projects/EmbeddingsService
-./status_check.sh
+./scripts/status_check.sh
 
 # Service control
 sudo systemctl status document-embedding-api-v3.service
@@ -92,7 +92,7 @@ docker-compose restart    # Restart containers
 ```bash
 # Check all services
 cd /home/chris/Projects/EmbeddingsService
-./status_check.sh
+./scripts/status_check.sh
 
 # Should show:
 # ✅ Milvus containers running
@@ -143,7 +143,7 @@ sudo systemctl status document-embedding-api-v3.service
 
 # Run performance test
 source venv/bin/activate
-python gpu_performance_test.py
+python debug/gpu_performance_test.py
 ```
 
 ---
@@ -189,9 +189,10 @@ python gpu_performance_test.py
 ├── production_rest_api_service_v3.py    # Main API service
 ├── document-embedding-api-v3.service    # Systemd service file
 ├── docker-compose.yml                   # Milvus container config
-├── manage_service_v3.sh                 # Service management
-├── status_check.sh                      # Status checker
-├── startup.sh                           # Startup script
+├── scripts/                             # Utility scripts
+│   ├── manage_service_v3.sh             # Service management
+│   ├── status_check.sh                  # Status checker
+│   └── startup.sh                       # Startup script
 ├── venv/                                # Python virtual environment
 ├── requirements.txt                     # Python dependencies
 └── [performance & config files]         # Additional components
@@ -201,7 +202,7 @@ python gpu_performance_test.py
 
 ## 🎯 **Next Steps After Server Restart**
 
-1. **Verify Services**: Run `./status_check.sh`
+1. **Verify Services**: Run `./scripts/status_check.sh`
 2. **Test API**: Check `http://localhost:5000/health`
 3. **Monitor Performance**: Check logs and resource usage
 4. **Backup**: Ensure critical data is backed up

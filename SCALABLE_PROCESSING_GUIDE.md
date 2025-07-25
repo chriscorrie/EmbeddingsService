@@ -121,7 +121,7 @@ processor = ScalableEnhancedProcessor(custom_config=custom_config)
 ### **3. Test Different Scaling:**
 ```python
 # Test conservative vs aggressive scaling
-python test_scalable_processing.py
+python debug/test_scalable_processing.py
 ```
 
 ## 📈 **Real-World Performance Impact:**
@@ -164,7 +164,7 @@ Improvement: 4.2x faster
 ### **1. Performance Testing:**
 ```bash
 # Test your current vs optimized processor
-python performance_test.py
+python debug/performance_test.py
 ```
 
 ### **2. Resource Monitoring:**

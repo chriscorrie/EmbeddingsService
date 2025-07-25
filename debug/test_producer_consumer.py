@@ -5,7 +5,7 @@ Simple test for the producer/consumer architecture core classes
 
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Test the core Opportunity and Document classes without importing the full processor
 def test_core_classes():

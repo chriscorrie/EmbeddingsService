@@ -9,7 +9,9 @@ import json
 from typing import Dict, Any
 
 # Add current directory to path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 def test_search_models_structure():
     """Test the search functionality structure without requiring Milvus"""

@@ -8,7 +8,7 @@ Production-ready document embedding API service with advanced semantic search ca
 - **Core Processor**: `scalable_processor.py` (Phase 2 optimized)
 - **Production Config**: `production_config.py`
 - **System Service**: `document-embedding-api.service`
-- **Management**: `manage_service.sh`
+- **Management**: `scripts/manage_service.sh`
 
 ## Service Management
 
@@ -24,13 +24,13 @@ sudo systemctl start|stop|restart document-embedding-api
 sudo journalctl -u document-embedding-api -f
 
 # Management script
-./manage_service.sh status|logs|restart
+./scripts/manage_service.sh status|logs|restart
 ```
 
 ### Quick Status Check
 ```bash
 # Run comprehensive status check
-./status_check.sh
+./scripts/status_check.sh
 
 # Manual checks
 sudo docker ps  # Check Milvus containers
@@ -42,7 +42,7 @@ curl http://localhost:5000/docs/   # Access documentation
 - **Milvus not responding**: Check `sudo docker logs milvus-standalone`
 - **API errors**: Check `sudo journalctl -u document-embedding-api -f`
 - **Performance issues**: Verify GPU/CUDA availability and Milvus resource allocation
-- **Database reset**: Use `python3 ResetDatabase.py` for clean restart
+- **Database reset**: Use `scripts/reset_database.sh` or `python3 ResetDatabase.py` for clean restart
 
 ## API Endpoints
 
@@ -164,7 +164,7 @@ curl http://localhost:5000/api/v1/status/processing-status
 ### Interactive Documentation
 Visit `http://localhost:5000/docs/` for full interactive API documentation with request/response examples.
 
-## Core Files
+## Project Structure
 ```
 ├── production_rest_api_service.py      # Main API service
 ├── scalable_processor.py               # Document processor  
@@ -177,25 +177,72 @@ Visit `http://localhost:5000/docs/` for full interactive API documentation with 
 ├── performance_timer.py                # Performance monitoring
 ├── config.py                          # Base configuration
 ├── requirements.txt                    # Dependencies
-├── manage_service.sh                   # Service management
+├── ResetDatabase.py                    # Database reset utility
 ├── document-embedding-api.service      # Systemd service
-├── debug/                             # Debug and diagnostic scripts
+├── debug/                             # Debug, test & performance scripts
+│   ├── debug_*.py                     # Debugging scripts
+│   ├── test_*.py                      # Feature testing scripts
+│   ├── *_performance_test.py          # Performance testing scripts
+│   └── *_validation_test.py           # System validation scripts
+├── scripts/                           # Utility scripts
+│   ├── reset_database.sh              # Database reset wrapper
+│   ├── manage_service.sh              # Service management
+│   ├── status_check.sh                # System status checker
+│   └── startup.sh                     # Service startup script
 ├── venv/                              # Virtual environment
 ├── logs/                              # Application logs
 └── entities.db                       # Entity database
 ```
 
+## Scripts Directory
+All utility scripts are organized in the `scripts/` directory:
+
+### Database Management
+- **`reset_database.sh`** - Wrapper for ResetDatabase.py with automatic venv activation
+
+### Service Management  
+- **`manage_service.sh`** - Service control and management
+- **`manage_service_v3.sh`** - Enhanced service management
+- **`service_manager.sh`** - Alternative service manager
+- **`status_check.sh`** - Comprehensive system status checker
+- **`startup.sh`** - Service startup script (used by systemd)
+
+### System Setup & Deployment
+- **`setup_production_service.sh`** - Production environment setup
+- **`cleanup_old_minio_data.sh`** - MinIO data cleanup utility
+
+### Infrastructure Management
+- **`restore_pcie_drives.sh`** - PCIE drive restoration after hardware changes
+- **`migrate_to_nvme.sh`** - NVME migration utilities
+
+### Usage Examples
+```bash
+# Check system status
+./scripts/status_check.sh
+
+# Reset database
+./scripts/reset_database.sh
+
+# Manage service
+./scripts/manage_service.sh status|logs|restart
+
+# Restore PCIE drives
+./scripts/restore_pcie_drives.sh
+```
+
+**For AI Assistants**: Always check the `scripts/` directory for utility scripts, especially database and system management tools.
+
 ## Archive
 Legacy files moved to: `/home/chris/document_embedding_archive/`
 
 ## Development and Debugging
-All debug, diagnostic, and testing scripts are organized in the `debug/` directory:
-- **Location**: `debug/` folder contains all debugging scripts
-- **Naming**: Use `debug_[component]_[issue].py` format
-- **Usage**: Run from project root: `python debug/debug_script_name.py`
-- **Documentation**: See `debug/README.md` for complete guidelines
+All debug, diagnostic, testing, and performance scripts are organized in the `debug/` directory:
+- **Location**: `debug/` folder contains all non-production development scripts
+- **Naming**: Use `debug_[component]_[issue].py`, `test_[feature].py`, or `[component]_performance_test.py` formats
+- **Usage**: Run from project root: `python debug/script_name.py`
+- **Documentation**: See `debug/README.md` for complete guidelines and script inventory
 
-**For AI Assistants**: Always place new debug scripts in the `debug/` directory, never in the project root.
+**For AI Assistants**: Always place new debug, test, performance, and validation scripts in the `debug/` directory, never in the project root.
 
 ## Client Integration
 See `/home/chris/EmbeddingsClient/` for C# client implementation.

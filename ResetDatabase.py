@@ -71,41 +71,7 @@ class DatabaseResetManager:
             print(f"❌ Failed to connect to SQL Server: {e}")
             return False
             
-    def backup_collection_info(self):
-        """Backup collection information before deletion"""
-        try:
-            print("📋 Backing up collection information...")
-            collections = utility.list_collections()
-            
-            backup_info = {
-                'timestamp': datetime.now().isoformat(),
-                'collections': {}
-            }
-            
-            for collection_name in collections:
-                try:
-                    collection = Collection(collection_name)
-                    backup_info['collections'][collection_name] = {
-                        'entity_count': collection.num_entities,
-                        'schema': str(collection.schema)
-                    }
-                    print(f"   📁 {collection_name}: {collection.num_entities:,} entities")
-                except Exception as e:
-                    print(f"   ❌ {collection_name}: Error backing up - {e}")
-                    
-            # Save backup info to file
-            import json
-            backup_file = f"database_reset_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-            with open(backup_file, 'w') as f:
-                json.dump(backup_info, f, indent=2)
-                
-            print(f"✅ Backup information saved to {backup_file}")
-            return True
-            
-        except Exception as e:
-            print(f"❌ Failed to backup collection info: {e}")
-            return False
-            
+     
     def drop_milvus_collections(self):
         """Drop all Milvus collections"""
         try:
@@ -222,19 +188,15 @@ class DatabaseResetManager:
             print("❌ Failed to connect to required databases")
             return False
             
-        # Step 2: Backup collection information
-        if not self.backup_collection_info():
-            print("⚠️  Backup failed - continuing with reset...")
-            
-        # Step 3: Drop Milvus collections
+        # Step 2: Drop Milvus collections
         if not self.drop_milvus_collections():
             success = False
             
-        # Step 4: Reset SQL entities table
+        # Step 3: Reset SQL entities table
         if not self.reset_sql_entities_table():
             success = False
             
-        # Step 5: Recreate Milvus collections
+        # Step 4: Recreate Milvus collections
         if not self.recreate_milvus_collections():
             print("⚠️  Collection recreation failed - you may need to run create_index.py")
             
