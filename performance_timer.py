@@ -35,7 +35,10 @@ class PerformanceTimer:
     Thread-safe performance timing system with detailed analytics
     """
     
-    def __init__(self, log_file: str = "performance_debug.log"):
+    def __init__(self, log_file: str = "logs/performance_debug.log"):
+        # Ensure logs directory exists
+        import os
+        os.makedirs("logs", exist_ok=True)
         self.log_file = log_file
         self.timings: List[TimingEntry] = []
         self.active_timers: Dict[str, float] = {}
@@ -262,8 +265,12 @@ class PerformanceTimer:
             print(f"   {op}: {stats['avg_time_ms']:.1f}ms avg "
                   f"(Total: {stats['total_time_ms']:.1f}ms, Count: {stats['count']})")
     
-    def save_detailed_report(self, filename: str = "performance_report.json"):
+    def save_detailed_report(self, filename: str = "logs/performance_report.json"):
         """Save detailed performance report to JSON"""
+        # Ensure logs directory exists
+        import os
+        os.makedirs("logs", exist_ok=True)
+        
         summary = self.get_summary()
         
         # Add raw timing data
@@ -331,8 +338,11 @@ def print_summary():
     """Print performance summary"""
     performance_timer.print_summary()
 
-def save_report(filename: str = "performance_report.json"):
+def save_report(filename: str = "logs/performance_report.json"):
     """Save detailed performance report"""
+    # Ensure logs directory exists
+    import os
+    os.makedirs("logs", exist_ok=True)
     performance_timer.save_detailed_report(filename)
 
 def reset_timer():

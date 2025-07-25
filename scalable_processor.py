@@ -83,12 +83,15 @@ from sentence_transformers import SentenceTransformer
 from chunk_embedding_cache import get_global_cache, clear_global_cache
 from parallel_entity_extractor import get_global_extractor, shutdown_global_extractor
 
+# Ensure logs directory exists
+os.makedirs("logs", exist_ok=True)
+
 # Setup logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('scalable_processing.log'),
+        logging.FileHandler('logs/scalable_processing.log'),
         logging.StreamHandler()
     ]
 )
@@ -778,7 +781,9 @@ class ScalableEnhancedProcessor:
             # Print performance summary
             logger.info("🔍 PRODUCER/CONSUMER ANALYSIS COMPLETE - See detailed timing below:")
             print_summary()
-            save_report(f"performance_report_{start_row_id}_{end_row_id}.json")
+            # Ensure logs directory exists for performance report
+            os.makedirs("logs", exist_ok=True)
+            save_report(f"logs/performance_report_{start_row_id}_{end_row_id}.json")
             
             self._log_final_stats(processing_time)
             
@@ -1045,7 +1050,9 @@ class ScalableEnhancedProcessor:
             # Print performance summary
             logger.info("🔍 PERFORMANCE ANALYSIS COMPLETE - See detailed timing below:")
             print_summary()
-            save_report(f"performance_report_{start_row_id}_{end_row_id}.json")
+            # Ensure logs directory exists for performance report
+            os.makedirs("logs", exist_ok=True)
+            save_report(f"logs/performance_report_{start_row_id}_{end_row_id}.json")
         
         self._log_final_stats(processing_time)
         

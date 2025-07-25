@@ -211,8 +211,11 @@ def run_parameter_sweep():
     print(f"   GPU Memory: {best_config['gpu_memory_mb']:.1f} MB")
     print(f"   Daily Capacity: {best_config['sentences_per_second'] * 86400:.0f} sentences/day")
     
+    # Ensure logs directory exists
+    os.makedirs("logs", exist_ok=True)
+    
     # Save results to file
-    with open('gpu_optimization_results.json', 'w') as f:
+    with open('logs/gpu_optimization_results.json', 'w') as f:
         json.dump(results, f, indent=2)
     
     # Update performance log
@@ -238,9 +241,9 @@ def update_performance_log(results, best_config):
     
     # Append to log
     try:
-        with open('gpu_performance_log.md', 'a') as f:
+        with open('logs/gpu_performance_log.md', 'a') as f:
             f.write(log_entry)
-        print(f"\\n📝 Results logged to gpu_performance_log.md and gpu_optimization_results.json")
+        print(f"\n📝 Results logged to logs/gpu_performance_log.md and logs/gpu_optimization_results.json")
     except Exception as e:
         print(f"Failed to update log: {e}")
 
@@ -248,7 +251,7 @@ if __name__ == "__main__":
     try:
         results, best_config = run_parameter_sweep()
         print(f"\\n✅ Parameter sweep completed successfully!")
-        print(f"📊 Results saved to gpu_optimization_results.json")
+        print(f"📊 Results saved to logs/gpu_optimization_results.json")
     except Exception as e:
         print(f"\\n❌ Parameter sweep failed: {e}")
         import traceback

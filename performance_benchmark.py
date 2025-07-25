@@ -282,8 +282,11 @@ class PerformanceBenchmark:
         print(f"   • Your {self.system_info['cpu_cores_physical']}-core system can handle much more load")
         print(f"   • With {self.system_info['available_memory_gb']:.0f}GB available RAM, you can be aggressive")
     
-    def save_results(self, results: List[Dict[str, Any]], filename: str = 'benchmark_results.json'):
+    def save_results(self, results: List[Dict[str, Any]], filename: str = 'logs/benchmark_results.json'):
         """Save benchmark results to file"""
+        # Ensure logs directory exists
+        os.makedirs("logs", exist_ok=True)
+        
         output = {
             'system_info': self.system_info,
             'benchmark_results': results,
