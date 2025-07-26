@@ -57,9 +57,13 @@ class EnhancedSearchProcessor:
                 return
                 
             if SQL_CONNECTION_STRING and SQL_CONNECTION_STRING != 'your_connection_string_here':
-                self.sql_conn = pyodbc.connect(SQL_CONNECTION_STRING)
+                # Create connection string with timeout parameter
+                connection_string = SQL_CONNECTION_STRING
+                if 'timeout=' not in connection_string.lower():
+                    connection_string += f";timeout={SQL_GLOBAL_TIMEOUT}"
+                
+                self.sql_conn = pyodbc.connect(connection_string)
                 self.sql_conn.autocommit = True
-                self.sql_conn.timeout = SQL_GLOBAL_TIMEOUT
                 logger.info("Connected to SQL Server for stored procedure calls")
             else:
                 logger.warning("SQL Server connection not configured for search processor")

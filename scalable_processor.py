@@ -904,8 +904,9 @@ class ScalableEnhancedProcessor:
                         return
                     
                     cursor = self.sql_conn.cursor()
-                    # Set extended timeout for the stored procedure
-                    cursor.timeout = SQL_EMBEDDING_PROCEDURE_TIMEOUT
+                    # Set extended timeout for the stored procedure on the connection
+                    original_timeout = self.sql_conn.timeout
+                    self.sql_conn.timeout = SQL_EMBEDDING_PROCEDURE_TIMEOUT
                     
                     logger.info(f"Producer: Executing FBOInternalAPI.GetEmbeddingContent for rows {start_row_id}-{end_row_id} (timeout: {SQL_EMBEDDING_PROCEDURE_TIMEOUT}s)")
                     producer_sql_start_time = time.time()
@@ -1007,10 +1008,17 @@ class ScalableEnhancedProcessor:
                         logger.info(f"Producer throughput: {throughput_mb_per_sec:.2f} MB/sec ({total_text_size_mb:.2f}MB in {producer_time:.1f}s)")
                     
                     cursor.close()
+                    # Restore original timeout
+                    self.sql_conn.timeout = original_timeout
                     logger.info(f"Producer finished: {opportunities_produced} opportunities queued, {total_text_size_mb:.2f}MB text pre-loaded")
                     
                 except Exception as e:
                     add_error(f"Producer thread error: {e}")
+                    # Restore original timeout on error
+                    try:
+                        self.sql_conn.timeout = original_timeout
+                    except:
+                        pass
                 finally:
                     # Signal that producer is done by putting None sentinel
                     for _ in range(consumer_count):
@@ -1824,8 +1832,9 @@ class ScalableEnhancedProcessor:
         cursor = None
         try:
             cursor = self.sql_conn.cursor()
-            # Set extended timeout for the stored procedure
-            cursor.timeout = SQL_EMBEDDING_PROCEDURE_TIMEOUT
+            # Set extended timeout for the stored procedure on the connection
+            original_timeout = self.sql_conn.timeout
+            self.sql_conn.timeout = SQL_EMBEDDING_PROCEDURE_TIMEOUT
             
             logger.info(f"Executing FBOInternalAPI.GetEmbeddingContent for rows {start_row_id}-{end_row_id} (timeout: {SQL_EMBEDDING_PROCEDURE_TIMEOUT}s)")
             start_time = time.time()
@@ -1855,10 +1864,17 @@ class ScalableEnhancedProcessor:
             
         except Exception as e:
             logger.error(f"Error retrieving opportunities data: {e}")
+            # Restore original timeout on error
+            try:
+                self.sql_conn.timeout = original_timeout
+            except:
+                pass
             return []
         finally:
             if cursor:
                 cursor.close()
+                # Restore original timeout
+                self.sql_conn.timeout = original_timeout
     
     def _group_opportunities_data(self, opportunities_data: List[Dict]) -> Dict:
         """Group opportunities data by opportunity_id"""

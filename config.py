@@ -29,7 +29,7 @@ SQL_EMBEDDING_PROCEDURE_TIMEOUT = 600  # Extended timeout for GetEmbeddingConten
 EMBEDDING_MODEL = 'sentence-transformers/all-MiniLM-L6-v2'
 
 # Entity Extraction Configuration
-ENABLE_ENTITY_EXTRACTION = False  # System-wide setting for entity extraction
+ENABLE_ENTITY_EXTRACTION = True  # System-wide setting for entity extraction
 
 # Entity Extraction Confidence Thresholds
 ENTITY_PERSON_CONF_THRESHOLD = 0.8   # Person confidence threshold  

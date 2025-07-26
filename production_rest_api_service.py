@@ -380,6 +380,18 @@ def process_embeddings_background(task_id: str, start_row_id: int, end_row_id: i
                 task.end_time = datetime.now()
                 task.opportunities_processed = result.get('opportunities_processed', 0)
                 
+                # Update the isolated stats with final comprehensive results
+                if task.isolated_stats and result:
+                    task.isolated_stats.update({
+                        'opportunities_processed': result.get('opportunities_processed', 0),
+                        'documents_embedded': result.get('documents_embedded', 0),
+                        'documents_skipped': result.get('documents_skipped', 0),
+                        'total_chunks_generated': result.get('total_chunks_generated', 0),
+                        'entities_extracted': result.get('entities_extracted', 0),
+                        'errors': result.get('errors', 0),
+                        'processing_time': result.get('processing_time', 0.0)
+                    })
+                
         logger.info(f"✓ Background processing completed for task {task_id} in {elapsed_time:.2f}s")
         logger.info(f"  Processed {result.get('opportunities_processed', 0)} opportunities")
         
