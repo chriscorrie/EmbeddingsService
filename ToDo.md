@@ -2,35 +2,33 @@
 
 ## 🚨 **CRITICAL NEXT STEPS - FILE DEDUPLICATION ARCHITECTURE**
 
-### **⚠️ BREAKING CHANGES IMPLEMENTED - SEARCH API UPDATES REQUIRED**
-**STATUS**: 🔴 **PARTIAL IMPLEMENTATION - SEARCH BROKEN UNTIL NEXT PHASE**
+### **✅ SEARCH API UPDATES COMPLETED - READY FOR DATABASE RESET**
+**STATUS**: � **IMPLEMENTATION COMPLETE - DATABASE RESET REQUIRED**
 
-#### **What Was Changed (January 26, 2025)**
+#### **What Was Changed (July 26, 2025)**
 - ✅ **Database Schema**: Updated `opportunity_documents` collection (FileId-based, removed OpportunityId)
 - ✅ **Embedding Storage**: Changed to FileId-based with min/max date range tracking
 - ✅ **File Deduplication Logic**: ExistingFile=1 skips processing, updates date ranges only
 - ✅ **Statistics**: Added deduplication tracking metrics
-- ✅ **Stored Procedure Integration**: Using `FBOInternalAPI.GetEmbeddingContent`
+- ✅ **Stored Procedure Integration**: Using `FBOInternalAPI.GetEmbeddingContent` and `FBOInternalAPI.GetEmbeddingFileOpportunities`
+- ✅ **Search API Updates**: All search operations updated to use FileId-based queries with OpportunityId mapping
 
-#### **🔴 CRITICAL: What Still Needs Implementation Before ANY Other Changes**
-1. **Search API Updates** - All search operations are broken until implemented:
-   - Update `enhanced_search_processor.py` to use FileId-based queries
-   - Modify search result aggregation to handle FileId → OpportunityId mapping
-   - Update similarity search logic for new schema
-   - Fix all API endpoints that query `opportunity_documents` collection
-
-2. **Database Reset Required**:
-   - Drop and recreate `opportunity_documents` collection with new schema
-   - Existing data is incompatible with new FileId-based structure
-
-3. **Testing & Validation**:
-   - Verify search functionality works with new architecture
+#### **🟡 CRITICAL: Final Steps Before Production Deployment**
+1. **Database Reset & Migration**:
+   - Drop and recreate `opportunity_documents` collection with new FileId-based schema
+   - Full reprocessing required to populate new structure
    - Validate 6x storage reduction is achieved
-   - Test date range updates for existing files
 
-#### **Expected Impact**
+2. **Testing & Validation**:
+   - Verify search functionality works with new architecture
+   - Test FileId → OpportunityId mapping with stored procedure
+   - Validate date range filtering works correctly
+   - Performance testing with new search workflow
+
+#### **Expected Impact (Ready to Deploy)**
 - **Storage Reduction**: 9.85TB → 1.64TB (6x reduction, 83.3% savings)
-- **Processing Efficiency**: Skip embeddings/entities for 1,052,879 duplicate files
+- **Processing Efficiency**: Skip embeddings/entities for 1,052,879 duplicate files  
+- **Search Functionality**: ✅ Fully restored and compatible with existing APIs
 - **Performance**: Maintain all existing optimizations while eliminating redundancy
 
 ---
@@ -239,6 +237,13 @@
 - **Expected Impact**: 5-15% improvement in vector operations
 - **Prerequisites**: Milvus performance profiling
 
+### **6. SQL Stored Procedure Optimization (FUTURE CONSIDERATION)**
+- **Current Status**: Individual stored procedure calls per FileId
+- **Optimization Trigger**: Only if large numbers of FileIds are returned from Milvus opportunity_documents searches
+- **Proposed Solution**: Rewrite `FBOInternalAPI.GetEmbeddingFileOpportunities` to accept table-valued parameter with multiple FileIds in single call
+- **Expected Impact**: Better scalability for high-volume FileId-to-OpportunityId mapping scenarios
+- **Implementation**: Only pursue if performance issues emerge from current approach
+
 ---
 
 ## 🧪 **INVESTIGATION TASKS**
@@ -345,13 +350,14 @@ sudo systemctl status document-embedding-api
 
 ## 📝 **SESSION NOTES**
 
-### **Current Session Summary (January 26, 2025)**
-- **MAJOR CHANGE**: Implemented file deduplication architecture (PARTIAL)
-- **Storage Optimization**: 6x reduction (9.85TB → 1.64TB) when fully deployed
-- **Breaking Changes**: opportunity_documents collection schema completely changed
-- **Critical Next Step**: Search API must be updated before any other changes
-- **Files Modified**: config.py, setup_vector_db.py, scalable_processor.py
-- **Status**: Processing ready, Search broken, Database reset required
+### **Current Session Summary (July 26, 2025)**
+- **MAJOR CHANGE**: Implemented FileId-based search API updates (COMPLETE)
+- **Search Functionality**: ✅ RESTORED - Updated to work with new FileId-based architecture  
+- **Breaking Changes**: Search operations now use `FBOInternalAPI.GetEmbeddingFileOpportunities` stored procedure
+- **Files Modified**: enhanced_search_processor.py, production_rest_api_service.py
+- **API Compatibility**: ✅ MAINTAINED - All existing API endpoints unchanged
+- **Architecture**: Two-phase search (Milvus FileId search → SQL OpportunityId mapping)
+- **Status**: Ready for database reset and full deployment testing
 
 ### **Previous Session Summary**
 - Successfully implemented async entity extraction

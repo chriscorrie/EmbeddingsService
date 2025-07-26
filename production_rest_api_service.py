@@ -34,6 +34,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 # Import our Phase 2 optimized modules
 from scalable_processor import ScalableEnhancedProcessor
+from enhanced_search_processor import EnhancedSearchProcessor
 from document_section_analyzer import DocumentSectionAnalyzer
 
 # Import production configuration
@@ -195,6 +196,7 @@ opportunity_search_response_model = api.model('OpportunitySearchResponse', {
 
 # Global variables for processing management
 processor = None
+search_processor = None
 analyzer = None
 processing_tasks = {}
 processing_lock = threading.Lock()
@@ -253,17 +255,24 @@ def create_error_response(error_message: str, error_code: str, status_code: int 
 
 def initialize_services():
     """Initialize the processor and analyzer services"""
-    global processor, analyzer
+    global processor, analyzer, search_processor
     
     try:
-        logger.info("Initializing Phase 2 optimized services...")
+        logger.info("Initializing scalable enhanced processor...")
         processor = ScalableEnhancedProcessor()
+        
+        logger.info("Initializing enhanced search processor...")
+        search_processor = EnhancedSearchProcessor()
+        
+        logger.info("Initializing document section analyzer...")
+        from document_section_analyzer import DocumentSectionAnalyzer
         analyzer = DocumentSectionAnalyzer()
-        logger.info("✓ Phase 2 services initialized successfully")
+        
+        logger.info("All services initialized successfully")
         return True
+        
     except Exception as e:
         logger.error(f"Failed to initialize services: {e}")
-        traceback.print_exc()
         return False
 
 def update_task_progress(task_id: str, opportunities_processed: int):
@@ -658,8 +667,8 @@ class SimilaritySearch(Resource):
                     return create_error_response(f'{name} must be a number between 0.0 and 1.0', 'INVALID_THRESHOLD',
                                                details={'parameter': name, 'provided_value': threshold, 'valid_range': '0.0-1.0'})
             
-            # Perform aggregated search using the processor
-            results = processor.search_similar_documents(
+            # Perform aggregated search using the enhanced search processor
+            results = search_processor.search_similar_documents(
                 query=query,
                 limit=limit,
                 title_similarity_threshold=title_threshold,
@@ -760,8 +769,8 @@ class OpportunitySearch(Resource):
             
             logger.info(f"Starting opportunity search {request_id} for {len(opportunity_ids)} opportunities")
             
-            # Perform search using the processor
-            results = processor.search_similar_opportunities(
+            # Perform search using the enhanced search processor
+            results = search_processor.search_similar_opportunities(
                 opportunity_ids=opportunity_ids,
                 title_similarity_threshold=title_threshold,
                 description_similarity_threshold=description_threshold,
