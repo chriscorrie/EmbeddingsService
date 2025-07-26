@@ -52,6 +52,8 @@ from config import (
     DOCUMENT_PATH_REPLACEMENT_VALUE,
     EMBEDDING_MODEL,
     SQL_CONNECTION_STRING,
+    SQL_GLOBAL_TIMEOUT,
+    SQL_EMBEDDING_PROCEDURE_TIMEOUT,
     BOILERPLATE_SIMILARITY_THRESHOLD,
     BOILERPLATE_DOCS_PATH,
     ENABLE_ENTITY_EXTRACTION,
@@ -106,11 +108,12 @@ class Opportunity:
 
 class Document:
     """Data class representing a document with its metadata and optional pre-loaded text"""
-    def __init__(self, file_id: int, file_location: str, file_size_bytes: int = None, text_content: str = None):
+    def __init__(self, file_id: int, file_location: str, file_size_bytes: int = None, text_content: str = None, existing_file: int = 0):
         self.file_id = file_id
         self.file_location = file_location
         self.file_size_bytes = file_size_bytes
         self.text_content = text_content  # Pre-loaded text data (None if not loaded)
+        self.existing_file = existing_file  # New property: 1 if file already exists, 0 if new file
         self.load_error = None  # Track any errors during loading
     
     def is_text_loaded(self) -> bool:
@@ -448,6 +451,8 @@ class ScalableEnhancedProcessor:
             'documents_skipped': 0,
             'documents_already_processed': 0,  # Files skipped due to previous processing
             'documents_race_condition_skipped': 0,  # Files skipped due to thread race conditions
+            'documents_existing_file_skipped': 0,  # Files skipped due to ExistingFile=1 (file deduplication)
+            'documents_date_ranges_updated': 0,  # Date ranges updated for existing files
             'total_chunks_generated': 0,
             'boilerplate_chunks_filtered': 0,
             'entities_extracted': 0,
@@ -525,7 +530,7 @@ class ScalableEnhancedProcessor:
             raise
     
     def setup_sql_connection(self):
-        """Setup SQL Server connection"""
+        """Setup SQL Server connection with timeout configuration"""
         try:
             if not PYODBC_AVAILABLE:
                 logger.warning("SQL Server connection not available - pyodbc not installed")
@@ -536,7 +541,9 @@ class ScalableEnhancedProcessor:
                 self.sql_conn = pyodbc.connect(SQL_CONNECTION_STRING)
                 # Enable autocommit to avoid transaction management issues with FreeTDS
                 self.sql_conn.autocommit = True
-                logger.info("Connected to SQL Server")
+                # Set global timeout
+                self.sql_conn.timeout = SQL_GLOBAL_TIMEOUT
+                logger.info(f"Connected to SQL Server with {SQL_GLOBAL_TIMEOUT}s timeout")
             else:
                 logger.warning("SQL Server connection not configured")
                 self.sql_conn = None
@@ -707,6 +714,89 @@ class ScalableEnhancedProcessor:
         with self.stats_lock:
             return self.stats.copy()
     
+    def _update_file_date_ranges(self, file_id, posted_date):
+        """
+        Update min_posted_date and max_posted_date for all records with the same FileId
+        in the opportunity_documents collection.
+        
+        For all records matching the FileId:
+        - If min_posted_date > posted_date, update min_posted_date to posted_date
+        - If max_posted_date < posted_date, update max_posted_date to posted_date
+        """
+        try:
+            from pymilvus import connections, Collection
+            
+            # Get the collection
+            collection = Collection(self.collection_name)
+            
+            # Query all records with this FileId
+            expr = f"file_id == '{file_id}'"
+            results = collection.query(
+                expr=expr,
+                output_fields=["id", "min_posted_date", "max_posted_date"],
+                consistency_level="Strong"
+            )
+            
+            if not results:
+                self.logger.warning(f"No records found for FileId {file_id} during date range update")
+                return
+            
+            # Convert posted_date to timestamp if it's a datetime
+            if hasattr(posted_date, 'timestamp'):
+                posted_timestamp = int(posted_date.timestamp())
+            else:
+                posted_timestamp = int(posted_date)
+            
+            updates_needed = []
+            
+            # Check each record to see if date range updates are needed
+            for record in results:
+                record_id = record["id"]
+                min_date = record.get("min_posted_date", posted_timestamp)
+                max_date = record.get("max_posted_date", posted_timestamp)
+                
+                new_min_date = min(min_date, posted_timestamp)
+                new_max_date = max(max_date, posted_timestamp)
+                
+                # Only update if there's an actual change
+                if new_min_date != min_date or new_max_date != max_date:
+                    updates_needed.append({
+                        "id": record_id,
+                        "min_posted_date": new_min_date,
+                        "max_posted_date": new_max_date
+                    })
+            
+            # Perform batch update if any updates are needed
+            if updates_needed:
+                # Milvus upsert requires all fields, so we need to get the full records first
+                ids_to_update = [update["id"] for update in updates_needed]
+                full_records = collection.query(
+                    expr=f"id in {ids_to_update}",
+                    output_fields=["*"],
+                    consistency_level="Strong"
+                )
+                
+                # Update the date fields in the full records
+                for i, record in enumerate(full_records):
+                    record_id = record["id"]
+                    # Find the corresponding update
+                    update_data = next(u for u in updates_needed if u["id"] == record_id)
+                    record["min_posted_date"] = update_data["min_posted_date"]
+                    record["max_posted_date"] = update_data["max_posted_date"]
+                
+                # Upsert the updated records
+                collection.upsert(full_records)
+                collection.flush()
+                
+                self.stats['documents_date_ranges_updated'] += len(updates_needed)
+                self.logger.info(f"Updated date ranges for {len(updates_needed)} records with FileId {file_id}")
+            else:
+                self.logger.debug(f"No date range updates needed for FileId {file_id}")
+                
+        except Exception as e:
+            self.logger.error(f"Error updating date ranges for FileId {file_id}: {str(e)}")
+            raise
+    
     def _flush_all_vector_collections(self):
         """Flush all vector collections as a batch commit operation"""
         try:
@@ -814,20 +904,20 @@ class ScalableEnhancedProcessor:
                         return
                     
                     cursor = self.sql_conn.cursor()
+                    # Set extended timeout for the stored procedure
+                    cursor.timeout = SQL_EMBEDDING_PROCEDURE_TIMEOUT
                     
-                    # Execute the SQL query
-                    selection_query = """
-                    SELECT A.OpportunityId, A.Title, B.description as Description, 
-                           D.fileId, D.fileLocation, A.postedDate, D.fileSizeBytes
-                    FROM FBOInternalAPI.Opportunities A 
-                    LEFT OUTER JOIN FBOInternalAPI.Descriptions B ON A.opportunityId=B.opportunityId 
-                    LEFT OUTER JOIN FBOInternalAPI.OpportunityAttachments C ON A.opportunityId=C.OpportunityId AND C.deletedFlag=0 
-                    LEFT OUTER JOIN FBOInternalAPI.OpportunityExtractedFiles D ON C.ExtractedFileId=D.fileId
-                    WHERE A.rowID >= ? and A.rowID <= ?
-                    ORDER BY A.rowID
-                    """
+                    logger.info(f"Producer: Executing FBOInternalAPI.GetEmbeddingContent for rows {start_row_id}-{end_row_id} (timeout: {SQL_EMBEDDING_PROCEDURE_TIMEOUT}s)")
+                    producer_sql_start_time = time.time()
                     
-                    cursor.execute(selection_query, (start_row_id, end_row_id))
+                    # Execute stored procedure
+                    cursor.execute(
+                        "EXEC FBOInternalAPI.GetEmbeddingContent ?, ?",
+                        (start_row_id, end_row_id)
+                    )
+                    
+                    sql_elapsed_time = time.time() - producer_sql_start_time
+                    logger.info(f"Producer: Stored procedure completed in {sql_elapsed_time:.2f}s")
                     
                     current_opportunity = None
                     opportunities_produced = 0
@@ -842,6 +932,7 @@ class ScalableEnhancedProcessor:
                         file_location = row[4] if row[4] else None
                         posted_date = row[5].isoformat() if row[5] else None
                         file_size_bytes = row[6] if row[6] else None
+                        existing_file = row[7] if len(row) > 7 else 0  # New ExistingFile column
                         
                         # Log file size correlation data
                         if file_size_bytes is not None:
@@ -897,8 +988,8 @@ class ScalableEnhancedProcessor:
                                 with self.stats_lock:
                                     self.stats['file_load_errors'] += 1
                             
-                            # Create document with pre-loaded text
-                            document = Document(file_id, file_location, file_size_bytes, text_content)
+                            # Create document with pre-loaded text and existing_file flag
+                            document = Document(file_id, file_location, file_size_bytes, text_content, existing_file)
                             document.load_error = load_error
                             current_opportunity.add_document(document)
                     
@@ -1095,18 +1186,28 @@ class ScalableEnhancedProcessor:
             self._update_stats('opportunities_processed', 1)
 
     def _process_single_file_simplified(self, document: Document, opportunity_id: str, posted_date: str, replace_existing_records: bool = False):
-        """Process a single document using simplified architecture"""
+        """Process a single document using simplified architecture with file deduplication support"""
         if document.file_id is None:
             logger.warning(f"Skipping document with NULL file_id: {document.file_location}")
             return []
         
         # Create context dict for performance logging with file size
-        context = {'file_id': document.file_id}
+        context = {'file_id': document.file_id, 'existing_file': document.existing_file}
         if document.file_size_bytes is not None:
             context['file_size_bytes'] = document.file_size_bytes
             context['file_size_mb'] = round(document.file_size_bytes / (1024 * 1024), 2) if document.file_size_bytes > 0 else 0
         
         with time_operation('process_single_file_simplified', context):
+            # NEW LOGIC: Check if this is an existing file (ExistingFile=1)
+            if document.existing_file == 1:
+                # Skip all processing (embeddings and entity extraction) for existing files
+                # Only update date ranges for the file_id in opportunity_documents collection
+                logger.debug(f"File {document.file_id} is an existing file - updating date ranges only")
+                self._update_file_date_ranges(document.file_id, posted_date)
+                self._update_stats('documents_existing_file_skipped', 1)
+                return []
+            
+            # EXISTING LOGIC: Process new files (ExistingFile=0)
             # Thread-safe file claim
             if not self._try_claim_file_for_processing(document.file_id, replace_existing_records):
                 logger.debug(f"File {document.file_id} already processed")
@@ -1578,11 +1679,17 @@ class ScalableEnhancedProcessor:
                         # OPTIMIZED: Batch all vectors into single insert operation
                         vectors_to_insert = []
                         for j, ((chunk, embedding), computed_embedding) in enumerate(zip(batch_chunks_with_embeddings, embeddings_batch)):
+                            # Convert posted_date to timestamp for date range fields
+                            if hasattr(posted_date, 'timestamp'):
+                                posted_timestamp = int(posted_date.timestamp())
+                            else:
+                                posted_timestamp = int(posted_date) if posted_date else int(datetime.now().timestamp())
+                            
                             vector_data = [
                                 file_info['file_id'],              # file_id
-                                opportunity_id,                    # opportunity_id
                                 computed_embedding.tolist(),      # embedding (use pre-computed)
-                                posted_date or datetime.now().isoformat(),  # posted_date
+                                posted_timestamp,                  # min_posted_date (initial value)
+                                posted_timestamp,                  # max_posted_date (initial value) 
                                 1.0,                               # base_importance
                                 i + j,                             # chunk_index
                                 len(chunks_with_embeddings),       # total_chunks
@@ -1594,12 +1701,12 @@ class ScalableEnhancedProcessor:
                         
                         # Single batch insert (MUCH faster than individual inserts)
                         if vectors_to_insert:
-                            # Transpose data for Milvus batch format
+                            # Transpose data for Milvus batch format (updated for new FileId-based schema)
                             transposed_data = [
                                 [item[0] for item in vectors_to_insert],  # file_ids
-                                [item[1] for item in vectors_to_insert],  # opportunity_ids
-                                [item[2] for item in vectors_to_insert],  # embeddings
-                                [item[3] for item in vectors_to_insert],  # posted_dates
+                                [item[1] for item in vectors_to_insert],  # embeddings
+                                [item[2] for item in vectors_to_insert],  # min_posted_date
+                                [item[3] for item in vectors_to_insert],  # max_posted_date
                                 [item[4] for item in vectors_to_insert],  # base_importance
                                 [item[5] for item in vectors_to_insert],  # chunk_indices
                                 [item[6] for item in vectors_to_insert],  # total_chunks
@@ -1612,11 +1719,17 @@ class ScalableEnhancedProcessor:
                     else:
                         # FALLBACK: Original individual inserts (for comparison/debugging)
                         for j, ((chunk, embedding), computed_embedding) in enumerate(zip(batch_chunks_with_embeddings, embeddings_batch)):
+                            # Convert posted_date to timestamp for date range fields
+                            if hasattr(posted_date, 'timestamp'):
+                                posted_timestamp = int(posted_date.timestamp())
+                            else:
+                                posted_timestamp = int(posted_date) if posted_date else int(datetime.now().timestamp())
+                            
                             data = [
                                 [file_info['file_id']],
-                                [opportunity_id],
                                 [computed_embedding.tolist()],
-                                [posted_date or datetime.now().isoformat()],
+                                [posted_timestamp],  # min_posted_date
+                                [posted_timestamp],  # max_posted_date
                                 [1.0],  # base_importance
                                 [i + j],  # chunk_index
                                 [len(chunks_with_embeddings)],  # total_chunks
@@ -1661,6 +1774,10 @@ class ScalableEnhancedProcessor:
             logger.info(f"🔄 Files Already Processed (Skipped): {self.stats['documents_already_processed']}")
         if self.stats.get('documents_race_condition_skipped', 0) > 0:
             logger.info(f"🏁 Files Skipped (Thread Race): {self.stats['documents_race_condition_skipped']}")
+        if self.stats.get('documents_existing_file_skipped', 0) > 0:
+            logger.info(f"♻️  Files Skipped (Existing File Deduplication): {self.stats['documents_existing_file_skipped']}")
+        if self.stats.get('documents_date_ranges_updated', 0) > 0:
+            logger.info(f"📅 Date Ranges Updated for Existing Files: {self.stats['documents_date_ranges_updated']}")
         
         logger.info(f"🧩 Total Chunks Generated: {self.stats['total_chunks_generated']}")
         logger.info(f"🧹 Boilerplate Chunks Filtered: {self.stats['boilerplate_chunks_filtered']}")
@@ -1699,7 +1816,7 @@ class ScalableEnhancedProcessor:
     
     # Include essential supporting methods from the base processor
     def get_opportunities_data(self, start_row_id: int, end_row_id: int) -> List[Dict]:
-        """Get opportunities data from SQL Server"""
+        """Get opportunities data from SQL Server using stored procedure"""
         if not self.sql_conn:
             logger.warning("SQL Server connection not available")
             return []
@@ -1707,19 +1824,17 @@ class ScalableEnhancedProcessor:
         cursor = None
         try:
             cursor = self.sql_conn.cursor()
+            # Set extended timeout for the stored procedure
+            cursor.timeout = SQL_EMBEDDING_PROCEDURE_TIMEOUT
             
-            selection_query = """
-            SELECT A.OpportunityId, A.Title, B.description as Description, 
-                   D.fileId, D.fileLocation, A.postedDate, D.fileSizeBytes
-            FROM FBOInternalAPI.Opportunities A 
-            LEFT OUTER JOIN FBOInternalAPI.Descriptions B ON A.opportunityId=B.opportunityId 
-            LEFT OUTER JOIN FBOInternalAPI.OpportunityAttachments C ON A.opportunityId=C.OpportunityId AND C.deletedFlag=0 
-            LEFT OUTER JOIN FBOInternalAPI.OpportunityExtractedFiles D ON C.ExtractedFileId=D.fileId
-            WHERE A.rowID >= ? and A.rowID <= ?
-            ORDER BY A.rowID
-            """
+            logger.info(f"Executing FBOInternalAPI.GetEmbeddingContent for rows {start_row_id}-{end_row_id} (timeout: {SQL_EMBEDDING_PROCEDURE_TIMEOUT}s)")
+            start_time = time.time()
             
-            cursor.execute(selection_query, (start_row_id, end_row_id))
+            # Execute stored procedure
+            cursor.execute(
+                "EXEC FBOInternalAPI.GetEmbeddingContent ?, ?",
+                (start_row_id, end_row_id)
+            )
             
             results = []
             for row in cursor.fetchall():
@@ -1730,10 +1845,12 @@ class ScalableEnhancedProcessor:
                     'file_id': row[3] if row[3] else None,
                     'file_location': row[4] if row[4] else None,
                     'posted_date': row[5].isoformat() if row[5] else None,
-                    'file_size_bytes': row[6] if row[6] else None
+                    'file_size_bytes': row[6] if row[6] else None,
+                    'existing_file': row[7] if len(row) > 7 else 0  # New ExistingFile column
                 })
             
-            logger.info(f"Retrieved {len(results)} records from SQL Server")
+            elapsed_time = time.time() - start_time
+            logger.info(f"Retrieved {len(results)} records from stored procedure in {elapsed_time:.2f}s")
             return results
             
         except Exception as e:
@@ -1760,7 +1877,8 @@ class ScalableEnhancedProcessor:
                 grouped_data[opp_id]['files'].append({
                     'file_id': record['file_id'],
                     'file_location': record['file_location'],
-                    'file_size_bytes': record['file_size_bytes']
+                    'file_size_bytes': record['file_size_bytes'],
+                    'existing_file': record['existing_file']  # Include ExistingFile property
                 })
         
         return grouped_data

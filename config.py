@@ -21,6 +21,10 @@ DOCUMENT_PATH_REPLACEMENT_VALUE = '/mnt/HomerShare/'  # Replacement path prefix
 SQL_SERVER_CONNECTION_STRING = 'DRIVER={FreeTDS};SERVER=HOMER.THE-CORRIES.COM;PORT=1433;DATABASE=FedProcurementData;UID=sa;PWD=Bu11d@g94;TDS_Version=8.0;'
 SQL_CONNECTION_STRING = 'DRIVER={FreeTDS};SERVER=HOMER.THE-CORRIES.COM;PORT=1433;DATABASE=FedProcurementData;UID=sa;PWD=Bu11d@g94;TDS_Version=8.0;'  # Alias for consistency
 
+# SQL Connection Timeout Configuration
+SQL_GLOBAL_TIMEOUT = 60  # Global SQL timeout in seconds
+SQL_EMBEDDING_PROCEDURE_TIMEOUT = 600  # Extended timeout for GetEmbeddingContent stored procedure (10 minutes)
+
 # Embedding model
 EMBEDDING_MODEL = 'sentence-transformers/all-MiniLM-L6-v2'
 

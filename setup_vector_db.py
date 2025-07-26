@@ -44,13 +44,13 @@ def setup_vector_database():
                 ]
             },
             "opportunity_documents": {
-                "description": "Opportunity Document Embeddings with Chunking",
+                "description": "Opportunity Document Embeddings with File ID-based Deduplication",
                 "fields": [
                     FieldSchema(name="id", dtype=DataType.INT64, is_primary=True, auto_id=True),
                     FieldSchema(name="file_id", dtype=DataType.INT64),
-                    FieldSchema(name="opportunity_id", dtype=DataType.VARCHAR, max_length=50),
+                    FieldSchema(name="min_posted_date", dtype=DataType.VARCHAR, max_length=50),
+                    FieldSchema(name="max_posted_date", dtype=DataType.VARCHAR, max_length=50),
                     FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=384),
-                    FieldSchema(name="posted_date", dtype=DataType.VARCHAR, max_length=50),
                     FieldSchema(name="base_importance", dtype=DataType.FLOAT),
                     FieldSchema(name="chunk_index", dtype=DataType.INT32),
                     FieldSchema(name="total_chunks", dtype=DataType.INT32),
@@ -96,17 +96,12 @@ def setup_vector_database():
                 
                 # Create scalar indices for fast lookups
                 if collection_name == "opportunity_documents":
-                    # Index on file_id for document lookups
+                    # Index on file_id for document lookups (primary lookup key)
                     collection.create_index(
                         field_name="file_id",
                         index_params={"index_type": "STL_SORT"}
                     )
-                    # Index on opportunity_id for filtering by opportunity
-                    collection.create_index(
-                        field_name="opportunity_id", 
-                        index_params={"index_type": "Trie"}
-                    )
-                    logger.info(f"Created file_id and opportunity_id indices for collection: {collection_name}")
+                    logger.info(f"Created file_id index for collection: {collection_name}")
                 
                 # Create scalar index on opportunity_id for titles and descriptions
                 if collection_name in ["opportunity_titles", "opportunity_descriptions"]:
