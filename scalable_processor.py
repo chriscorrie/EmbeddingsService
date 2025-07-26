@@ -744,6 +744,15 @@ class ScalableEnhancedProcessor:
             # Convert posted_date to timestamp if it's a datetime
             if hasattr(posted_date, 'timestamp'):
                 posted_timestamp = int(posted_date.timestamp())
+            elif isinstance(posted_date, str):
+                # Handle ISO format datetime strings from SQL
+                from datetime import datetime
+                try:
+                    dt = datetime.fromisoformat(posted_date.replace('T', ' '))
+                    posted_timestamp = int(dt.timestamp())
+                except ValueError:
+                    # Fallback to current time if parsing fails
+                    posted_timestamp = int(datetime.now().timestamp())
             else:
                 posted_timestamp = int(posted_date)
             

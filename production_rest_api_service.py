@@ -299,8 +299,16 @@ def start_progress_monitor(task_id: str):
                 # Get current stats from processor if available
                 if processor:
                     try:
-                        current_stats = processor.get_current_stats()
-                        current_processed = current_stats.get('opportunities_processed', 0)
+                        # Try to get task-specific stats first
+                        if hasattr(processor, 'task_specific_stats') and processor.task_specific_stats is not None:
+                            current_processed = processor.task_specific_stats.get('opportunities_processed', 0)
+                            logger.debug(f"Using task-specific stats for {task_id}: {current_processed} opportunities")
+                        else:
+                            # Fallback to shared stats
+                            current_stats = processor.get_current_stats()
+                            current_processed = current_stats.get('opportunities_processed', 0)
+                            logger.debug(f"Using shared stats for {task_id}: {current_processed} opportunities")
+                        
                         update_task_progress(task_id, current_processed)
                     except Exception as e:
                         logger.debug(f"Progress monitor error for task {task_id}: {e}")
