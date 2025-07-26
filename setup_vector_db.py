@@ -23,7 +23,7 @@ def setup_vector_database():
                     FieldSchema(name="id", dtype=DataType.INT64, is_primary=True, auto_id=True),
                     FieldSchema(name="opportunity_id", dtype=DataType.VARCHAR, max_length=50),
                     FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=384),
-                    FieldSchema(name="posted_date", dtype=DataType.VARCHAR, max_length=50),
+                    FieldSchema(name="posted_date", dtype=DataType.INT64),  # Unix timestamp in milliseconds
                     FieldSchema(name="importance_score", dtype=DataType.FLOAT),
                     FieldSchema(name="chunk_index", dtype=DataType.INT32),
                     FieldSchema(name="total_chunks", dtype=DataType.INT32),
@@ -36,7 +36,7 @@ def setup_vector_database():
                     FieldSchema(name="id", dtype=DataType.INT64, is_primary=True, auto_id=True),
                     FieldSchema(name="opportunity_id", dtype=DataType.VARCHAR, max_length=50),
                     FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=384),
-                    FieldSchema(name="posted_date", dtype=DataType.VARCHAR, max_length=50),
+                    FieldSchema(name="posted_date", dtype=DataType.INT64),  # Unix timestamp in milliseconds
                     FieldSchema(name="importance_score", dtype=DataType.FLOAT),
                     FieldSchema(name="chunk_index", dtype=DataType.INT32),
                     FieldSchema(name="total_chunks", dtype=DataType.INT32),
@@ -48,8 +48,8 @@ def setup_vector_database():
                 "fields": [
                     FieldSchema(name="id", dtype=DataType.INT64, is_primary=True, auto_id=True),
                     FieldSchema(name="file_id", dtype=DataType.INT64),
-                    FieldSchema(name="min_posted_date", dtype=DataType.VARCHAR, max_length=50),
-                    FieldSchema(name="max_posted_date", dtype=DataType.VARCHAR, max_length=50),
+                    FieldSchema(name="min_posted_date", dtype=DataType.INT64),  # Unix timestamp in milliseconds
+                    FieldSchema(name="max_posted_date", dtype=DataType.INT64),  # Unix timestamp in milliseconds
                     FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=384),
                     FieldSchema(name="base_importance", dtype=DataType.FLOAT),
                     FieldSchema(name="chunk_index", dtype=DataType.INT32),

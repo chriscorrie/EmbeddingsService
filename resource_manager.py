@@ -9,11 +9,9 @@ import logging
 from typing import Tuple, Dict, Any
 from config import (
     MAX_OPPORTUNITY_WORKERS,
-    MAX_FILE_WORKERS_PER_OPPORTUNITY,
     MAX_MEMORY_USAGE_MB,
     CPU_CORE_MULTIPLIER,
-    ENABLE_MEMORY_MONITORING,
-    ENABLE_PARALLEL_PROCESSING
+    ENABLE_MEMORY_MONITORING
 )
 
 logger = logging.getLogger(__name__)
@@ -52,32 +50,16 @@ class ResourceManager:
             }
     
     def _calculate_optimal_workers(self) -> Dict[str, int]:
-        """Calculate optimal worker counts based on system resources"""
-        if not ENABLE_PARALLEL_PROCESSING:
-            return {
-                'opportunity_workers': 1,
-                'file_workers_per_opportunity': 1,
-                'total_max_workers': 1
-            }
-        
+        """Calculate optimal worker counts based on system resources for producer/consumer architecture"""
         # Base calculations on physical CPU cores
         physical_cores = self.system_info['cpu_cores']
         available_memory_gb = self.system_info['available_memory_gb']
         
-        # Calculate opportunity workers (main parallel processing)
+        # Calculate opportunity workers (consumer threads in producer/consumer architecture)
         base_opportunity_workers = max(1, int(physical_cores * CPU_CORE_MULTIPLIER))
         
         # Limit by configured maximum
         opportunity_workers = min(base_opportunity_workers, MAX_OPPORTUNITY_WORKERS)
-        
-        # Calculate file workers per opportunity (sub-parallel processing)
-        # Reserve some cores for opportunity-level parallelism
-        remaining_cores = max(1, physical_cores - opportunity_workers)
-        file_workers_per_opportunity = min(
-            remaining_cores,
-            MAX_FILE_WORKERS_PER_OPPORTUNITY,
-            4  # Practical limit for file I/O
-        )
         
         # Memory-based limits
         memory_limit_workers = max(1, int(available_memory_gb / 2))  # 2GB per worker
@@ -87,11 +69,11 @@ class ResourceManager:
             logger.warning(f"Reducing opportunity workers from {opportunity_workers} to {memory_limit_workers} due to memory constraints")
             opportunity_workers = memory_limit_workers
         
-        total_max_workers = opportunity_workers * file_workers_per_opportunity
+        # For producer/consumer architecture, total workers = consumer threads
+        total_max_workers = opportunity_workers
         
         return {
             'opportunity_workers': opportunity_workers,
-            'file_workers_per_opportunity': file_workers_per_opportunity,
             'total_max_workers': total_max_workers
         }
     
@@ -115,12 +97,9 @@ class ResourceManager:
         logger.info(f"   CPU Usage: {self.system_info['cpu_usage_percent']:.1f}%")
         
         logger.info("⚡ Optimal Configuration:")
-        logger.info(f"   Opportunity Workers: {self.optimal_workers['opportunity_workers']}")
-        logger.info(f"   File Workers/Opportunity: {self.optimal_workers['file_workers_per_opportunity']}")
+        logger.info(f"   Consumer Workers: {self.optimal_workers['opportunity_workers']}")
         logger.info(f"   Total Max Workers: {self.optimal_workers['total_max_workers']}")
-        
-        if not ENABLE_PARALLEL_PROCESSING:
-            logger.warning("⚠️  Parallel processing is DISABLED in configuration")
+        logger.info("   Architecture: Producer/Consumer")
     
     def check_resource_health(self) -> Tuple[bool, str]:
         """Check if system has sufficient resources for processing"""
@@ -189,7 +168,7 @@ if __name__ == "__main__":
     config = get_optimal_configuration()
     
     print("\n🔧 Recommended Configuration:")
-    print(f"Opportunity Workers: {config['optimal_workers']['opportunity_workers']}")
-    print(f"File Workers per Opportunity: {config['optimal_workers']['file_workers_per_opportunity']}")
+    print(f"Consumer Workers: {config['optimal_workers']['opportunity_workers']}")
+    print(f"Total Max Workers: {config['optimal_workers']['total_max_workers']}")
     print(f"Embedding Batch Size: {config['batch_sizes']['embedding_batch_size']}")
     print(f"System Health: {'✅ Good' if config['system_healthy'] else '⚠️ ' + config['health_message']}")

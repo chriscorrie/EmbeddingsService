@@ -30,23 +30,18 @@ EMBEDDING_MODEL = 'sentence-transformers/all-MiniLM-L6-v2'
 
 # Entity Extraction Configuration
 ENABLE_ENTITY_EXTRACTION = True  # System-wide setting for entity extraction
+ENTITY_EXTRACTION_SHUTDOWN_TIMEOUT = 3600  # Maximum time to wait for entity extraction to complete (60 minutes)
 
 # Entity Extraction Confidence Thresholds
 ENTITY_PERSON_CONF_THRESHOLD = 0.8   # Person confidence threshold  
 ENTITY_TITLE_CONF_THRESHOLD = 0.8    # Title confidence threshold
 ENTITY_CONF_THRESHOLD = 0.8          # General entity confidence threshold for storage
 
-# Parallel Processing Configuration - ENABLED FOR BETTER THROUGHPUT
-MAX_OPPORTUNITY_WORKERS = 4           # Enable 4 workers for testing performance scaling
-MAX_FILE_WORKERS_PER_OPPORTUNITY = 2  # Allow parallel file processing for better throughput
-ENABLE_PARALLEL_PROCESSING = True     # Enable parallel processing for better performance
+# Producer/Consumer Architecture Configuration
+MAX_OPPORTUNITY_WORKERS = 4           # Number of consumer threads (opportunities processed simultaneously)
+ENABLE_PRODUCER_CONSUMER_ARCHITECTURE = True  # Use producer/consumer model for maximum performance
 
-# Producer/Consumer Architecture - NEW OPTIMIZED APPROACH
-ENABLE_PRODUCER_CONSUMER_ARCHITECTURE = True  # Use new producer/consumer model for maximum performance
 
-# Dynamic File Worker Scaling (for opportunities with many files) - CONTROLLED SCALING
-ENABLE_DYNAMIC_FILE_WORKERS = False  # Disable dynamic scaling to prevent resource contention (was True)
-MIN_FILES_FOR_SCALING = 8            # Minimum files to trigger additional file workers (increased from 4 - much more conservative)
 MAX_DYNAMIC_FILE_WORKERS = 2         # Maximum file workers for high-file-count opportunities (reduced from 4 - minimal threading)
 
 # Performance Optimization Settings - OPTIMIZED FOR LARGE BATCHES

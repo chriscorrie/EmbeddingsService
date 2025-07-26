@@ -58,9 +58,8 @@ from config import (
     BOILERPLATE_DOCS_PATH,
     ENABLE_ENTITY_EXTRACTION,
     ENTITY_CONF_THRESHOLD,
-    ENABLE_PARALLEL_PROCESSING,
+    ENTITY_EXTRACTION_SHUTDOWN_TIMEOUT,
     MAX_OPPORTUNITY_WORKERS,
-    MAX_FILE_WORKERS_PER_OPPORTUNITY,
     ENABLE_MEMORY_MONITORING,
     EMBEDDING_BATCH_SIZE,
     ENTITY_BATCH_SIZE,
@@ -78,6 +77,7 @@ from config import (
 # Optional imports with graceful fallbacks
 from pymilvus import connections, Collection, utility
 from sentence_transformers import SentenceTransformer
+from datetime_utils import datetime_to_timestamp, timestamp_to_datetime
 
 # Ensure logs directory exists
 os.makedirs("logs", exist_ok=True)
@@ -290,12 +290,16 @@ class EntityExtractionQueue:
         with self.stats_lock:
             return self.stats.copy()
     
-    def shutdown(self, timeout: float = 30.0):
-        """Shutdown entity extraction queue"""
+    def shutdown(self, timeout: float = None):
+        """Shutdown entity extraction queue and return final stats"""
         if not self.enable_entity_extraction:
-            return
+            return None
         
-        logger.info("Shutting down EntityExtractionQueue...")
+        # Use configured timeout if none provided
+        if timeout is None:
+            timeout = ENTITY_EXTRACTION_SHUTDOWN_TIMEOUT
+        
+        logger.info(f"Shutting down EntityExtractionQueue with {timeout/60:.1f} minute timeout...")
         
         # Signal shutdown
         self.shutdown_event.set()
@@ -307,13 +311,26 @@ class EntityExtractionQueue:
             except queue.Full:
                 pass
         
-        # Wait for workers to finish
+        # Wait for workers to finish with proper validation
+        all_workers_stopped = True
         for worker in self.workers:
             worker.join(timeout=timeout)
+            if worker.is_alive():
+                logger.warning(f"EntityWorker {worker.name} did not stop within {timeout/60:.1f} minute timeout")
+                all_workers_stopped = False
         
-        # Log final stats
+        # If workers didn't stop cleanly, log warning but continue
+        if not all_workers_stopped:
+            logger.warning(f"Some entity extraction workers did not stop cleanly within {timeout/60:.1f} minute timeout - tasks may still be processing in background")
+        else:
+            logger.info("All entity extraction workers stopped cleanly")
+        
+        # Get final stats
         final_stats = self.get_stats()
         logger.info(f"EntityExtractionQueue shutdown complete. Final stats: {final_stats}")
+        
+        # Return final stats for transfer to main processor
+        return final_stats
 
 class ScalableEnhancedProcessor:
     """
@@ -343,7 +360,6 @@ class ScalableEnhancedProcessor:
             # Use aggressive configuration directly from config.py
             logger.info("🚀 AGGRESSIVE MODE: Bypassing conservative resource manager")
             self.opportunity_workers = MAX_OPPORTUNITY_WORKERS
-            self.file_workers_per_opportunity = MAX_FILE_WORKERS_PER_OPPORTUNITY
             self.batch_sizes = {
                 'embedding_batch_size': EMBEDDING_BATCH_SIZE,
                 'entity_batch_size': ENTITY_BATCH_SIZE,
@@ -362,27 +378,18 @@ class ScalableEnhancedProcessor:
                 self.resource_config.update(custom_config)
             
             # Set worker counts based on optimal configuration
-            if ENABLE_PARALLEL_PROCESSING:
-                self.opportunity_workers = min(
-                    self.resource_config['optimal_workers']['opportunity_workers'],
-                    MAX_OPPORTUNITY_WORKERS
-                )
-                self.file_workers_per_opportunity = min(
-                    self.resource_config['optimal_workers']['file_workers_per_opportunity'],
-                    MAX_FILE_WORKERS_PER_OPPORTUNITY
-                )
-            else:
-                self.opportunity_workers = 1
-                self.file_workers_per_opportunity = 1
+            self.opportunity_workers = min(
+                self.resource_config['optimal_workers']['opportunity_workers'],
+                MAX_OPPORTUNITY_WORKERS
+            )
             
             # Dynamic batch sizes based on available memory
             self.batch_sizes = self.resource_config['batch_sizes']
         
         logger.info(f"🚀 Scalable Processor Initialized:")
         logger.info(f"   Opportunity Workers: {self.opportunity_workers}")
-        logger.info(f"   File Workers/Opportunity: {self.file_workers_per_opportunity}")
         logger.info(f"   Embedding Batch Size: {self.batch_sizes['embedding_batch_size']}")
-        logger.info(f"   Total Parallel Capacity: {self.opportunity_workers * self.file_workers_per_opportunity} concurrent operations")
+        logger.info(f"   Total Processing Capacity: {self.opportunity_workers} concurrent consumer threads")
         
         # Initialize components
         self.setup_milvus_connection()
@@ -472,6 +479,33 @@ class ScalableEnhancedProcessor:
         self.memory_monitor = None
         if ENABLE_MEMORY_MONITORING:
             self.setup_memory_monitoring()
+        
+        # Log schema validation on startup
+        self._log_schema_validation()
+    
+    def _log_schema_validation(self):
+        """Log schema field order for debugging and validation"""
+        try:
+            collection = self.collections['opportunity_documents']
+            schema_fields = [(i, field.name, field.dtype) for i, field in enumerate(collection.schema.fields)]
+            
+            logger.info("🔍 SCHEMA VALIDATION: opportunity_documents field order:")
+            for i, name, dtype in schema_fields:
+                logger.info(f"  {i}: {name} -> {dtype}")
+            
+            # Log expected data order for reference
+            logger.info("🔍 EXPECTED DATA ORDER in vector_data array:")
+            expected_order = [
+                "file_id (INT64)", "min_posted_date (INT64)", "max_posted_date (INT64)", 
+                "embedding (FLOAT_VECTOR)", "base_importance (FLOAT)", "chunk_index (INT32)",
+                "total_chunks (INT32)", "text_content (VARCHAR)", "file_location (VARCHAR)", 
+                "section_type (VARCHAR)"
+            ]
+            for i, field_desc in enumerate(expected_order):
+                logger.info(f"  {i}: {field_desc}")
+                
+        except Exception as e:
+            logger.warning(f"Schema validation logging failed: {e}")
     
     def setup_memory_monitoring(self):
         """Setup memory monitoring during processing"""
@@ -725,12 +759,13 @@ class ScalableEnhancedProcessor:
         """
         try:
             from pymilvus import connections, Collection
+            from datetime import datetime
             
             # Get the collection
-            collection = Collection(self.collection_name)
+            collection = Collection("opportunity_documents")
             
             # Query all records with this FileId
-            expr = f"file_id == '{file_id}'"
+            expr = f"file_id == {file_id}"
             results = collection.query(
                 expr=expr,
                 output_fields=["id", "min_posted_date", "max_posted_date"],
@@ -738,23 +773,11 @@ class ScalableEnhancedProcessor:
             )
             
             if not results:
-                self.logger.warning(f"No records found for FileId {file_id} during date range update")
+                logger.warning(f"No records found for FileId {file_id} during date range update")
                 return
             
-            # Convert posted_date to timestamp if it's a datetime
-            if hasattr(posted_date, 'timestamp'):
-                posted_timestamp = int(posted_date.timestamp())
-            elif isinstance(posted_date, str):
-                # Handle ISO format datetime strings from SQL
-                from datetime import datetime
-                try:
-                    dt = datetime.fromisoformat(posted_date.replace('T', ' '))
-                    posted_timestamp = int(dt.timestamp())
-                except ValueError:
-                    # Fallback to current time if parsing fails
-                    posted_timestamp = int(datetime.now().timestamp())
-            else:
-                posted_timestamp = int(posted_date)
+            # Convert posted_date to timestamp in milliseconds
+            posted_timestamp = datetime_to_timestamp(posted_date)
             
             updates_needed = []
             
@@ -797,13 +820,13 @@ class ScalableEnhancedProcessor:
                 collection.upsert(full_records)
                 collection.flush()
                 
-                self.stats['documents_date_ranges_updated'] += len(updates_needed)
-                self.logger.info(f"Updated date ranges for {len(updates_needed)} records with FileId {file_id}")
+                self._update_stats('documents_date_ranges_updated', len(updates_needed))
+                logger.info(f"Updated date ranges for {len(updates_needed)} records with FileId {file_id}")
             else:
-                self.logger.debug(f"No date range updates needed for FileId {file_id}")
+                logger.debug(f"No date range updates needed for FileId {file_id}")
                 
         except Exception as e:
-            self.logger.error(f"Error updating date ranges for FileId {file_id}: {str(e)}")
+            logger.error(f"Error updating date ranges for FileId {file_id}: {str(e)}")
             raise
     
     def _flush_all_vector_collections(self):
@@ -869,8 +892,12 @@ class ScalableEnhancedProcessor:
             self.task_specific_stats = {
                 'opportunities_processed': 0,
                 'documents_processed': 0,
+                'documents_embedded': 0,  # Add missing key
                 'documents_skipped': 0,
                 'total_chunks_generated': 0,
+                'boilerplate_chunks_filtered': 0,  # Add missing key
+                'titles_embedded': 0,  # Add missing key
+                'descriptions_embedded': 0,  # Add missing key
                 'entities_extracted': 0,
                 'errors': 0
             }
@@ -1099,7 +1126,19 @@ class ScalableEnhancedProcessor:
             # Entity extraction cleanup
             if self.enable_entity_extraction and self.entity_queue:
                 logger.info("Shutting down entity extraction queue...")
-                self.entity_queue.shutdown(timeout=30.0)
+                entity_shutdown_start = time.time()
+                entity_final_stats = self.entity_queue.shutdown()  # Use configured timeout
+                entity_shutdown_time = time.time() - entity_shutdown_start
+                
+                logger.info(f"Entity extraction queue shutdown completed in {entity_shutdown_time:.2f}s")
+                
+                # Transfer entity extraction stats to task-specific stats
+                if entity_final_stats and hasattr(self, 'task_specific_stats') and self.task_specific_stats is not None:
+                    entities_extracted = entity_final_stats.get('entities_extracted', 0)
+                    self.task_specific_stats['entities_extracted'] = entities_extracted
+                    logger.info(f"🔧 Transferred {entities_extracted} entities_extracted to task-specific stats")
+                else:
+                    logger.warning("Failed to transfer entity extraction stats - no final stats or task-specific stats not available")
             
             # Final processing time
             processing_time = time.time() - start_time
@@ -1302,236 +1341,6 @@ class ScalableEnhancedProcessor:
         logger.info("Using producer/consumer architecture for optimal performance")
         return self.process_scalable_batch_producer_consumer(start_row_id, end_row_id, replace_existing_records, task_id)
 
-    def _process_scalable_batch_legacy(self, start_row_id: int, end_row_id: int, replace_existing_records: bool = False, task_id: str = None):
-        """
-        Process batch with intelligent scaling based on system resources (legacy data grouping approach)
-        """
-        # Reset statistics for this processing run
-        self._reset_stats()
-        
-        with time_operation('process_scalable_batch', {'start_row': start_row_id, 'end_row': end_row_id}):
-            start_time = time.time()
-            logger.info(f"🚀 Starting scalable processing for rows {start_row_id} to {end_row_id}")
-            logger.info(f"📊 Using {self.opportunity_workers} opportunity workers, {self.file_workers_per_opportunity} file workers each")
-            
-            # Check system health before starting
-            if not self.resource_config['system_healthy']:
-                logger.warning(f"⚠️  System resource warning: {self.resource_config['health_message']}")
-                logger.warning("Proceeding with reduced performance expectations...")
-            
-            # Get data from SQL Server
-            with time_operation('sql_data_retrieval', {'row_count': end_row_id - start_row_id}):
-                opportunities_data = self.get_opportunities_data(start_row_id, end_row_id)
-            
-            if not opportunities_data:
-                logger.warning("No data retrieved from SQL Server")
-                return {
-                    'opportunities_processed': 0,
-                    'documents_embedded': 0,
-                    'documents_skipped': 0,
-                    'total_chunks_generated': 0,
-                    'processing_time': 0.0,
-                    'errors': 0
-                }
-            
-            # Group by opportunity_id
-            with time_operation('data_grouping'):
-                grouped_data = self._group_opportunities_data(opportunities_data)
-            
-            logger.info(f"📋 Processing {len(grouped_data)} unique opportunities")
-            
-            # Process opportunities with intelligent scaling
-            if ENABLE_PARALLEL_PROCESSING and self.opportunity_workers > 1:
-                self._process_opportunities_parallel(grouped_data, replace_existing_records)
-            else:
-                self._process_opportunities_sequential(grouped_data, replace_existing_records)
-            
-            # Stop memory monitoring
-            with time_operation('cleanup_operations'):
-                self.stop_memory_monitoring()
-                
-                # Entity extraction cleanup
-                if self.enable_entity_extraction and self.entity_queue:
-                    logger.info("Shutting down entity extraction queue...")
-                    self.entity_queue.shutdown(timeout=30.0)
-                
-                # Cleanup embedding model pool
-                if self.use_pool and self.embedding_pool:
-                    logger.info("Shutting down embedding model pool...")
-                    self.embeddings.stop_multi_process_pool(self.embedding_pool)
-                    self.embedding_pool = None
-                    self.use_pool = False
-                
-                # Final batch commit - flush any remaining operations
-                if self.enable_batch_commits and self.opportunities_since_last_flush > 0:
-                    logger.info(f"💾 Final commit: flushing all vector collections for remaining {self.opportunities_since_last_flush} opportunities")
-                    self._flush_all_vector_collections()
-                
-                # Flush all collections (final safety flush)
-                for collection_name, collection in self.collections.items():
-                    collection.flush()
-            
-            # Final statistics
-            processing_time = time.time() - start_time
-            self.stats['processing_time'] = processing_time
-            
-            # Print performance summary
-            logger.info("🔍 PERFORMANCE ANALYSIS COMPLETE - See detailed timing below:")
-            print_summary()
-            # Ensure logs directory exists for performance report
-            os.makedirs("logs", exist_ok=True)
-            # Use task_id for unique performance reports, fallback to row range if no task_id
-            report_filename = f"logs/performance_report_{task_id}.json" if task_id else f"logs/performance_report_{start_row_id}_{end_row_id}.json"
-            save_report(report_filename)
-        
-        self._log_final_stats(processing_time)
-        
-        # Return processing statistics for API service
-        return {
-            'opportunities_processed': self.stats['opportunities_processed'],
-            'documents_embedded': self.stats['documents_embedded'],
-            'documents_skipped': self.stats['documents_skipped'],
-            'total_chunks_generated': self.stats['total_chunks_generated'],
-            'processing_time': processing_time,
-            'errors': self.stats['errors']
-        }
-    
-    def _process_opportunities_parallel(self, grouped_data: Dict, replace_existing_records: bool):
-        """Process opportunities in parallel with intelligent scaling"""
-        with ThreadPoolExecutor(max_workers=self.opportunity_workers) as executor:
-            # Submit all opportunity processing tasks
-            future_to_opp = {
-                executor.submit(
-                    self._process_single_opportunity, 
-                    opportunity_id, 
-                    data, 
-                    replace_existing_records
-                ): opportunity_id
-                for opportunity_id, data in grouped_data.items()
-            }
-            
-            # Collect results with progress tracking
-            completed = 0
-            total = len(future_to_opp)
-            
-            for future in as_completed(future_to_opp):
-                opportunity_id = future_to_opp[future]
-                try:
-                    future.result()
-                    completed += 1
-                    
-                    if completed % 5 == 0 or completed == total:
-                        progress = (completed / total) * 100
-                        logger.info(f"📈 Progress: {completed}/{total} opportunities ({progress:.1f}%)")
-                        
-                except Exception as e:
-                    logger.error(f"Error processing opportunity {opportunity_id}: {e}")
-                    self._update_stats('errors', 1)
-    
-    def _process_opportunities_sequential(self, grouped_data: Dict, replace_existing_records: bool):
-        """Process opportunities sequentially (fallback mode)"""
-        logger.info("Processing opportunities sequentially (parallel processing disabled)")
-        
-        for i, (opportunity_id, data) in enumerate(grouped_data.items(), 1):
-            try:
-                self._process_single_opportunity(opportunity_id, data, replace_existing_records)
-                
-                # Batch commit logic - flush all collections after processing batch of opportunities
-                if self.enable_batch_commits:
-                    with self.batch_commit_lock:
-                        self.opportunities_since_last_flush += 1
-                        
-                        if self.opportunities_since_last_flush >= self.vector_batch_size:
-                            logger.info(f"💾 Committing batch: flushing all vector collections after {self.opportunities_since_last_flush} opportunities")
-                            self._flush_all_vector_collections()
-                            self.opportunities_since_last_flush = 0
-                
-                if i % 5 == 0:
-                    progress = (i / len(grouped_data)) * 100
-                    logger.info(f"📈 Progress: {i}/{len(grouped_data)} opportunities ({progress:.1f}%)")
-                    
-            except Exception as e:
-                logger.error(f"Error processing opportunity {opportunity_id}: {e}")
-                self._update_stats('errors', 1)
-    
-    def _process_single_opportunity(self, opportunity_id: str, data: Dict, replace_existing_records: bool):
-        """Process a single opportunity with file-level parallelization"""
-        with time_operation('process_single_opportunity', {'opportunity_id': opportunity_id, 'file_count': len(data.get('files', []))}):
-            
-            # Process title and description (fast, keep sequential)
-            if opportunity_id not in self.processed_opportunities:
-                if data['title']:
-                    with time_operation('title_embedding'):
-                        success = self.process_title_embedding(opportunity_id, data['title'], data['posted_date'], replace_existing_records)
-                        if success:
-                            self._update_stats('titles_embedded', 1)
-                
-                if data['description']:
-                    with time_operation('description_embedding'):
-                        success = self.process_description_embedding(opportunity_id, data['description'], data['posted_date'], replace_existing_records)
-                        if success:
-                            self._update_stats('descriptions_embedded', 1)
-                    
-                    # Submit description entity extraction asynchronously
-                    if self.enable_entity_extraction and self.entity_queue:
-                        self.entity_queue.submit_task(
-                            data['description'], 
-                            opportunity_id, 
-                            'description'
-                        )
-                
-                self.processed_opportunities.add(opportunity_id)
-            
-            # Process files with configurable parallelization
-            if data['files']:
-                file_worker_count = min(self.file_workers_per_opportunity, len(data['files']))
-                
-                if file_worker_count > 1:
-                    with time_operation('files_parallel_processing', {'file_count': len(data['files']), 'workers': file_worker_count}):
-                        self._process_files_parallel(data['files'], opportunity_id, data['posted_date'], file_worker_count, replace_existing_records)
-                else:
-                    with time_operation('files_sequential_processing', {'file_count': len(data['files'])}):
-                        self._process_files_sequential(data['files'], opportunity_id, data['posted_date'], replace_existing_records)
-            
-            # Only increment progress counter after ALL processing is complete for this opportunity
-            self._update_stats('opportunities_processed', 1)
-    
-    def _process_files_parallel(self, files: List[Dict], opportunity_id: str, posted_date: str, worker_count: int, replace_existing_records: bool = False):
-        """Process files in parallel for a single opportunity"""
-        
-        with ThreadPoolExecutor(max_workers=worker_count) as file_executor:
-            file_futures = {
-                file_executor.submit(
-                    self._process_single_file, 
-                    file_info, 
-                    opportunity_id, 
-                    posted_date,
-                    replace_existing_records
-                ): file_info
-                for file_info in files if file_info.get('file_id') is not None
-            }
-            
-            for future in as_completed(file_futures):
-                file_info = file_futures[future]
-                try:
-                    future.result()  # No longer collecting entities
-                except Exception as e:
-                    logger.error(f"Error processing file {file_info['file_location']}: {e}")
-                    self._update_stats('errors', 1)
-    
-    def _process_files_sequential(self, files: List[Dict], opportunity_id: str, posted_date: str, replace_existing_records: bool = False):
-        """Process files sequentially for a single opportunity"""
-        
-        for file_info in files:
-            if file_info.get('file_id') is None:
-                logger.warning(f"Skipping file with NULL file_id: {file_info.get('file_location')}")
-                continue
-            try:
-                self._process_single_file(file_info, opportunity_id, posted_date, replace_existing_records)  # No longer collecting entities
-            except Exception as e:
-                logger.error(f"Error processing file {file_info['file_location']}: {e}")
-                self._update_stats('errors', 1)
-    
     def _try_claim_file_for_processing(self, file_id: int, replace_existing_records: bool = False) -> bool:
         """
         Simplified file claim - no longer prevents duplicate processing since same file can be processed for different opportunities
@@ -1696,63 +1505,59 @@ class ScalableEnhancedProcessor:
                         # OPTIMIZED: Batch all vectors into single insert operation
                         vectors_to_insert = []
                         for j, ((chunk, embedding), computed_embedding) in enumerate(zip(batch_chunks_with_embeddings, embeddings_batch)):
-                            # Convert posted_date to timestamp for date range fields
-                            if hasattr(posted_date, 'timestamp'):
-                                posted_timestamp = int(posted_date.timestamp())
-                            else:
-                                posted_timestamp = int(posted_date) if posted_date else int(datetime.now().timestamp())
+                            # Convert posted_date to timestamp for date range fields using proper utility
+                            posted_timestamp = datetime_to_timestamp(posted_date)
                             
+                            # FIXED: Reorder vector_data to match Milvus schema field order
                             vector_data = [
-                                file_info['file_id'],              # file_id
-                                computed_embedding.tolist(),      # embedding (use pre-computed)
-                                posted_timestamp,                  # min_posted_date (initial value)
-                                posted_timestamp,                  # max_posted_date (initial value) 
-                                1.0,                               # base_importance
-                                i + j,                             # chunk_index
-                                len(chunks_with_embeddings),       # total_chunks
-                                chunk[:2000],                      # text_content
-                                file_info.get('file_location', ''), # file_location
-                                ''                                 # section_type (empty for now)
+                                file_info['file_id'],              # file_id (1st in schema)
+                                posted_timestamp,                  # min_posted_date (2nd in schema)
+                                posted_timestamp,                  # max_posted_date (3rd in schema)
+                                computed_embedding.tolist(),      # embedding (4th in schema)
+                                1.0,                               # base_importance (5th in schema)
+                                i + j,                             # chunk_index (6th in schema)
+                                len(chunks_with_embeddings),       # total_chunks (7th in schema)
+                                chunk[:2000],                      # text_content (8th in schema)
+                                file_info.get('file_location', ''), # file_location (9th in schema)
+                                ''                                 # section_type (10th in schema)
                             ]
                             vectors_to_insert.append(vector_data)
                         
                         # Single batch insert (MUCH faster than individual inserts)
                         if vectors_to_insert:
-                            # Transpose data for Milvus batch format (updated for new FileId-based schema)
+                            # FIXED: Transpose data for Milvus batch format with correct schema field order
                             transposed_data = [
-                                [item[0] for item in vectors_to_insert],  # file_ids
-                                [item[1] for item in vectors_to_insert],  # embeddings
-                                [item[2] for item in vectors_to_insert],  # min_posted_date
-                                [item[3] for item in vectors_to_insert],  # max_posted_date
-                                [item[4] for item in vectors_to_insert],  # base_importance
-                                [item[5] for item in vectors_to_insert],  # chunk_indices
-                                [item[6] for item in vectors_to_insert],  # total_chunks
-                                [item[7] for item in vectors_to_insert],  # text_content
-                                [item[8] for item in vectors_to_insert],  # file_location
-                                [item[9] for item in vectors_to_insert],  # section_type
+                                [item[0] for item in vectors_to_insert],  # file_id (1st in schema)
+                                [item[1] for item in vectors_to_insert],  # min_posted_date (2nd in schema)
+                                [item[2] for item in vectors_to_insert],  # max_posted_date (3rd in schema)
+                                [item[3] for item in vectors_to_insert],  # embedding (4th in schema)
+                                [item[4] for item in vectors_to_insert],  # base_importance (5th in schema)
+                                [item[5] for item in vectors_to_insert],  # chunk_index (6th in schema)
+                                [item[6] for item in vectors_to_insert],  # total_chunks (7th in schema)
+                                [item[7] for item in vectors_to_insert],  # text_content (8th in schema)
+                                [item[8] for item in vectors_to_insert],  # file_location (9th in schema)
+                                [item[9] for item in vectors_to_insert],  # section_type (10th in schema)
                             ]
                             result = self.collections['opportunity_documents'].insert(transposed_data)
                             logger.debug(f"Batch inserted {len(vectors_to_insert)} vectors: {result}")
                     else:
                         # FALLBACK: Original individual inserts (for comparison/debugging)
                         for j, ((chunk, embedding), computed_embedding) in enumerate(zip(batch_chunks_with_embeddings, embeddings_batch)):
-                            # Convert posted_date to timestamp for date range fields
-                            if hasattr(posted_date, 'timestamp'):
-                                posted_timestamp = int(posted_date.timestamp())
-                            else:
-                                posted_timestamp = int(posted_date) if posted_date else int(datetime.now().timestamp())
+                            # Convert posted_date to timestamp for date range fields using proper utility
+                            posted_timestamp = datetime_to_timestamp(posted_date)
                             
+                            # FIXED: Reorder data array to match Milvus schema field order
                             data = [
-                                [file_info['file_id']],
-                                [computed_embedding.tolist()],
-                                [posted_timestamp],  # min_posted_date
-                                [posted_timestamp],  # max_posted_date
-                                [1.0],  # base_importance
-                                [i + j],  # chunk_index
-                                [len(chunks_with_embeddings)],  # total_chunks
-                                [chunk[:2000]],  # text_content
-                                [file_info.get('file_location', '')],  # file_location
-                                ['']  # section_type
+                                [file_info['file_id']],            # file_id (1st in schema)
+                                [posted_timestamp],               # min_posted_date (2nd in schema)
+                                [posted_timestamp],               # max_posted_date (3rd in schema)
+                                [computed_embedding.tolist()],    # embedding (4th in schema)
+                                [1.0],                            # base_importance (5th in schema)
+                                [i + j],                          # chunk_index (6th in schema)
+                                [len(chunks_with_embeddings)],    # total_chunks (7th in schema)
+                                [chunk[:2000]],                   # text_content (8th in schema)
+                                [file_info.get('file_location', '')],  # file_location (9th in schema)
+                                ['']                              # section_type (10th in schema)
                             ]
                             
                             self.collections['opportunity_documents'].insert(data)
@@ -2009,10 +1814,12 @@ class ScalableEnhancedProcessor:
                 collection = self.collections['titles']
                 with time_operation('title_vector_insert'):
                     # Schema: opportunity_id, embedding, posted_date, importance_score, chunk_index, total_chunks, text_content
+                    # Convert posted_date to timestamp for storage
+                    posted_timestamp = datetime_to_timestamp(posted_date)
                     collection.insert([
                         [opportunity_id],           # opportunity_id field
                         [title_embedding],          # embedding field
-                        [posted_date or ''],        # posted_date field
+                        [posted_timestamp],         # posted_date field (as timestamp)
                         [1.0],                      # importance_score (default)
                         [0],                        # chunk_index (0 for single chunk)
                         [1],                        # total_chunks (1 for single chunk)
@@ -2052,7 +1859,9 @@ class ScalableEnhancedProcessor:
                 # Prepare batch data for all chunks
                 opportunity_ids = [opportunity_id] * total_chunks
                 embeddings = chunk_embeddings
-                posted_dates = [posted_date or ''] * total_chunks
+                # Convert posted_date to timestamp for all chunks
+                posted_timestamp = datetime_to_timestamp(posted_date)
+                posted_timestamps = [posted_timestamp] * total_chunks
                 importance_scores = [1.0] * total_chunks  # Default importance
                 chunk_indices = list(range(total_chunks))
                 total_chunks_list = [total_chunks] * total_chunks
@@ -2063,7 +1872,7 @@ class ScalableEnhancedProcessor:
                     collection.insert([
                         opportunity_ids,            # opportunity_id field
                         embeddings,                 # embedding field
-                        posted_dates,               # posted_date field
+                        posted_timestamps,          # posted_date field (as timestamps)
                         importance_scores,          # importance_score
                         chunk_indices,              # chunk_index
                         total_chunks_list,          # total_chunks
@@ -2589,9 +2398,7 @@ def main():
         print("="*60)
         print(f"Configuration:")
         print(f"  Opportunity Workers: {MAX_OPPORTUNITY_WORKERS}")
-        print(f"  File Workers per Opportunity: {MAX_FILE_WORKERS_PER_OPPORTUNITY}")
-        print(f"  Total Concurrent Workers: {MAX_OPPORTUNITY_WORKERS * MAX_FILE_WORKERS_PER_OPPORTUNITY}")
-        print(f"  Parallel Processing: {ENABLE_PARALLEL_PROCESSING}")
+        print(f"  Producer/Consumer Architecture: Enabled")
         print("="*60)
         
         # Initialize the processor

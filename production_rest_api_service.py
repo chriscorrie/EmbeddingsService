@@ -384,6 +384,10 @@ def process_embeddings_background(task_id: str, start_row_id: int, end_row_id: i
         with processing_lock:
             if task_id in processing_tasks:
                 task = processing_tasks[task_id]
+                
+                # Log the final stats before updating
+                logger.info(f"Task {task_id} final stats from scalable processor: {result}")
+                
                 task.status = "completed"
                 task.end_time = datetime.now()
                 task.opportunities_processed = result.get('opportunities_processed', 0)
@@ -399,6 +403,9 @@ def process_embeddings_background(task_id: str, start_row_id: int, end_row_id: i
                         'errors': result.get('errors', 0),
                         'processing_time': result.get('processing_time', 0.0)
                     })
+                    logger.info(f"Task {task_id} updated isolated_stats: {task.isolated_stats}")
+                else:
+                    logger.warning(f"Task {task_id} - No isolated_stats or result to update")
                 
         logger.info(f"✓ Background processing completed for task {task_id} in {elapsed_time:.2f}s")
         logger.info(f"  Processed {result.get('opportunities_processed', 0)} opportunities")

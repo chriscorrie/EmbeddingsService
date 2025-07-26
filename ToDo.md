@@ -1,49 +1,9 @@
 # EmbeddingsService Performance Optimization - ToDo & Progress Tracker
 
-## 🚨 **CRITICAL NEXT STEPS - FILE DEDUPLICATION ARCHITECTURE**
-
-### **✅ SEARCH API UPDATES COMPLETED - READY FOR DATABASE RESET**
-**STATUS**: � **IMPLEMENTATION COMPLETE - DATABASE RESET REQUIRED**
-
-#### **What Was Changed (July 26, 2025)**
-- ✅ **Database Schema**: Updated `opportunity_documents` collection (FileId-based, removed OpportunityId)
-- ✅ **Embedding Storage**: Changed to FileId-based with min/max date range tracking
-- ✅ **File Deduplication Logic**: ExistingFile=1 skips processing, updates date ranges only
-- ✅ **Statistics**: Added deduplication tracking metrics
-- ✅ **Stored Procedure Integration**: Using `FBOInternalAPI.GetEmbeddingContent` and `FBOInternalAPI.GetEmbeddingFileOpportunities`
-- ✅ **Search API Updates**: All search operations updated to use FileId-based queries with OpportunityId mapping
-
-#### **🟡 CRITICAL: Final Steps Before Production Deployment**
-1. **Database Reset & Migration**:
-   - Drop and recreate `opportunity_documents` collection with new FileId-based schema
-   - Full reprocessing required to populate new structure
-   - Validate 6x storage reduction is achieved
-
-2. **Testing & Validation**:
-   - Verify search functionality works with new architecture
-   - Test FileId → OpportunityId mapping with stored procedure
-   - Validate date range filtering works correctly
-   - Performance testing with new search workflow
-
-#### **Expected Impact (Ready to Deploy)**
-- **Storage Reduction**: 9.85TB → 1.64TB (6x reduction, 83.3% savings)
-- **Processing Efficiency**: Skip embeddings/entities for 1,052,879 duplicate files  
-- **Search Functionality**: ✅ Fully restored and compatible with existing APIs
-- **Performance**: Maintain all existing optimizations while eliminating redundancy
-
----
-
-## 📊 **CURRENT PERFORMANCE STATUS**
-
-### **Established Baselines**
-- **Baseline** (Entity extraction OFF): **67.76s** for 35 opportunities
-- **Optimized** (Async entity extraction ON): **70.6s** for 35 opportunities  
-- **Original** (Legacy dual entity systems): **86.3s** for 35 opportunities
-
-### **Achievement Summary**
-- ✅ **18.2% Performance Improvement** achieved (86.3s → 70.6s)
-- ✅ **4.2% Async Overhead** for entity extraction when enabled (67.76s → 70.6s)
-- ✅ **Clean Architecture** with complete legacy code removal
+### Immediate next steps to address
+- The statistics for individual tasks do not appear to be update in the processing-status api call in real-time for documents, like they are for opportunities (documents processed, skipped, chunks generated, etc.).
+- The statistics for entities_extracted also are not updated until processing is complete.
+- The deduplication/consolidation logic for entities extracted by OpportunityId does not appear to be running either...we have lots of duplciate entities.
 
 ### **Standard Testing Parameters**
 - **Test Range**: Rows 1-35 (mandatory for consistency)
@@ -52,58 +12,7 @@
 - **API Endpoint**: `POST /api/v1/embeddings/process-embeddings`
 - **Status Check**: `GET /api/v1/status/processing-status/<task_id>`
 
----
-
 ## ✅ **COMPLETED OPTIMIZATIONS**
-
-### **1. File Deduplication Architecture (MAJOR BREAKING CHANGE - PARTIAL)**
-- **Status**: 🟡 **PARTIAL - Storage implementation complete, Search API pending**
-- **Implementation Date**: January 26, 2025
-- **Storage Reduction**: 9.85TB → 1.64TB (6x reduction, 83.3% savings)
-- **Files Modified**: 
-  - `config.py` - Added SQL timeout configurations
-  - `setup_vector_db.py` - Updated opportunity_documents schema (FileId-based)
-  - `scalable_processor.py` - File deduplication logic, date range updates, statistics
-
-#### **✅ Completed Components**:
-1. **Database Schema Updates**:
-   - `opportunity_documents` collection: Removed `opportunity_id`, added `min_posted_date`/`max_posted_date`
-   - FileId-based indexing replaces OpportunityId-based indexing
-   - Backward compatibility broken (requires database reset)
-
-2. **Processing Logic**:
-   - `FBOInternalAPI.GetEmbeddingContent` stored procedure integration
-   - ExistingFile=1: Skip embeddings/entities, update date ranges only
-   - ExistingFile=0: Normal processing with FileId-based storage
-   - `_update_file_date_ranges()` method for min/max date management
-
-3. **Statistics & Monitoring**:
-   - `documents_existing_file_skipped`: Files skipped due to deduplication
-   - `documents_date_ranges_updated`: Date range updates for existing files
-   - Enhanced logging for deduplication metrics
-
-4. **Data Model Changes**:
-   - Document class: Added `existing_file` property
-   - Embedding storage: FileId-based with date range fields
-   - Entity extraction: Properly skipped for existing files
-
-#### **❌ Pending Critical Components**:
-1. **Search API Updates** (MUST be completed before any other changes):
-   - `enhanced_search_processor.py`: Update to query FileId-based schema
-   - Search result aggregation: Handle FileId → OpportunityId mapping
-   - All API endpoints: Fix queries to opportunity_documents collection
-   - Similarity search: Adapt to new schema structure
-
-2. **Database Migration**:
-   - Drop existing opportunity_documents collection
-   - Recreate with new FileId-based schema
-   - Full reprocessing required for data migration
-
-#### **⚠️ Current System State**:
-- **Processing**: ✅ Ready for FileId-based deduplication
-- **Search**: 🔴 BROKEN - Will fail on opportunity_documents queries
-- **Storage**: ✅ Optimized for 6x reduction
-- **Other Collections**: ✅ Unaffected (titles, descriptions still OpportunityId-based)
 
 ### **2. Async Entity Extraction (MAJOR WIN)**
 - **Implementation**: `EntityExtractionQueue` with 2 dedicated worker threads
@@ -118,13 +27,6 @@
   - Thread-safe statistics
   - Configurable via `ENABLE_ENTITY_EXTRACTION` flag
 
-### **2. Legacy Code Cleanup (CRITICAL)**
-- **Removed**: All `parallel_entity_extractor` imports and code
-- **Eliminated**: Dual entity extraction systems causing overhead
-- **Result**: Zero unexpected overhead when entity extraction disabled
-- **Status**: ✅ Complete
-- **Impact**: Clean codebase, predictable performance
-
 ### **3. Chunk Embedding Cache Removal (PERFORMANCE)**
 - **Rationale**: GPU embeddings are fast enough that cache overhead exceeds benefits
 - **Removed**: All `ENABLE_CHUNK_EMBEDDING_CACHE` configuration and code
@@ -132,13 +34,7 @@
 - **Status**: ✅ Complete
 - **Files Modified**: `config.py`, `scalable_processor.py`, `production_rest_api_service.py`, debug files
 
-### **4. Testing Standards Documentation**
-- **Established**: Mandatory test parameters (rows 1-35, reprocess=false)
-- **Documented**: In `README.md` for consistency across sessions
-- **Status**: ✅ Complete
-
 ---
-
 ## ❌ **ATTEMPTED OPTIMIZATIONS (DO NOT RETRY)**
 
 ### **1. Early Exit Boilerplate Detection**
@@ -156,7 +52,7 @@
 - **Result**: Removed entirely
 - **Lesson**: When hardware is fast enough, caching can hurt more than help
 
-### **3. Legacy Parallel Entity Extraction**
+### **3. Parallel Entity Extraction**
 - **Problem**: Dual entity extraction systems caused unexpected overhead
 - **Issue**: Even when "disabled", legacy code paths were still executing
 - **Result**: Complete removal required
@@ -165,27 +61,6 @@
 ---
 
 ## 🔄 **NEXT OPTIMIZATION OPPORTUNITIES** (Priority Order)
-
-### **1. Search API Architecture Updates (CRITICAL PRIORITY)**
-- **Status**: 🔴 **REQUIRED BEFORE ANY OTHER CHANGES**
-- **Scope**: Update all search operations for FileId-based opportunity_documents collection
-- **Files to Modify**:
-  - `enhanced_search_processor.py` - Core search logic updates
-  - Search API endpoints - Update query logic
-  - Result aggregation - FileId to OpportunityId mapping
-- **Impact**: Restore search functionality, enable 6x storage reduction
-- **Prerequisites**: Complete file deduplication architecture
-- **Expected Timeline**: High priority - must be completed first
-
-### **2. Database Migration for File Deduplication (CRITICAL PRIORITY)**
-- **Status**: 🔴 **REQUIRED - Database reset needed**
-- **Scope**: 
-  - Drop and recreate opportunity_documents collection
-  - Full reprocessing with new FileId-based architecture
-  - Validate 6x storage reduction achieved
-- **Impact**: Enable production use of file deduplication
-- **Prerequisites**: Search API updates completed
-- **Expected Timeline**: High priority - follows search updates
 
 ### **3. GPU Acceleration Optimization (HIGH PRIORITY)**
 - **Current Status**: Basic GPU detection and batch size scaling
@@ -283,11 +158,6 @@ curl -X POST "http://localhost:5000/api/v1/embeddings/process-embeddings" \
 curl "http://localhost:5000/api/v1/status/processing-status/<task_id>"
 ```
 
-### **Configuration Testing**
-- Test with entity extraction ON and OFF
-- Compare performance against established baselines
-- Validate no regressions in existing functionality
-
 ### **Service Management**
 ```bash
 # Restart service after configuration changes
@@ -298,13 +168,6 @@ sudo systemctl status document-embedding-api
 ---
 
 ## 🏗️ **ARCHITECTURE NOTES**
-
-### **Current Clean Architecture**
-- **Main Processor**: `scalable_processor.py` with producer/consumer pattern
-- **Entity Extraction**: `EntityExtractionQueue` (async, optional)
-- **Configuration**: Clean flags in `config.py`
-- **No Legacy Code**: All parallel_entity_extractor code removed
-- **No Chunk Caching**: Removed for performance
 
 ### **Key Design Principles**
 1. **Async I/O Operations**: Entity extraction runs independently
@@ -337,7 +200,7 @@ sudo systemctl status document-embedding-api
 ## 🎯 **SUCCESS METRICS**
 
 ### **Performance Targets**
-- **Primary Goal**: Sub-60 second processing for rows 1-35
+- **Primary Goal**: Sub-30 second processing for rows 1-35
 - **Secondary Goal**: <5% overhead for optional features (entity extraction)
 - **Reliability Goal**: Zero errors in standard test runs
 
@@ -353,35 +216,7 @@ sudo systemctl status document-embedding-api
 ### **Current Session Summary (July 26, 2025)**
 - **MAJOR CHANGE**: Implemented FileId-based search API updates (COMPLETE)
 - **Search Functionality**: ✅ RESTORED - Updated to work with new FileId-based architecture  
-- **Breaking Changes**: Search operations now use `FBOInternalAPI.GetEmbeddingFileOpportunities` stored procedure
-- **Files Modified**: enhanced_search_processor.py, production_rest_api_service.py
-- **API Compatibility**: ✅ MAINTAINED - All existing API endpoints unchanged
-- **Architecture**: Two-phase search (Milvus FileId search → SQL OpportunityId mapping)
-- **Status**: Ready for database reset and full deployment testing
 
-### **Previous Session Summary**
-- Successfully implemented async entity extraction
-- Achieved 18.2% performance improvement  
-- Removed all legacy code and chunk caching
-- Established testing standards and baselines
-- Service running cleanly with optimized configuration
 
-### **Current Configuration**
-- File deduplication: ✅ Processing logic implemented
-- Search functionality: 🔴 BROKEN - requires immediate attention
-- Entity extraction: Currently disabled for baseline testing
-- Chunk caching: Removed entirely
-- GPU acceleration: Enabled and optimized
-- Service: `document-embedding-api` running on port 5000
-
-### **⚠️ Important Notes for Next Session**
-1. **DO NOT** attempt other optimizations until search is fixed
-2. **MUST** update enhanced_search_processor.py first
-3. Database reset will be required for full deployment
-4. All other collections (titles, descriptions) remain unchanged
-5. Rollback option available if needed (commit checkpoint)
-
----
-
-*Last updated: July 25, 2025*
+*Last updated: July 26, 2025*
 *Next session: Focus on GPU optimization and database connection pooling*
