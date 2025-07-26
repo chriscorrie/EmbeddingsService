@@ -59,6 +59,7 @@ from config import (
     ENABLE_ENTITY_EXTRACTION,
     ENTITY_CONF_THRESHOLD,
     ENTITY_EXTRACTION_SHUTDOWN_TIMEOUT,
+    ENTITY_EXTRACTION_COMPLETION_TIMEOUT,
     MAX_OPPORTUNITY_WORKERS,
     ENABLE_MEMORY_MONITORING,
     EMBEDDING_BATCH_SIZE,
@@ -154,18 +155,34 @@ class EntityExtractionQueue:
         self.workers = []
         self.shutdown_event = threading.Event()
         
+        # Opportunity tracking for consolidation
+        self.opportunity_tracking = {}  # opportunity_id -> {'expected': int, 'completed': int, 'entities': [], 'last_update': timestamp}
+        self.tracking_lock = threading.Lock()
+        
         # Statistics
         self.stats_lock = threading.Lock()
         self.stats = {
             'tasks_queued': 0,
             'tasks_completed': 0,
             'tasks_failed': 0,
-            'entities_extracted': 0
+            'entities_extracted': 0,
+            'opportunities_completed': 0,
+            'opportunities_timed_out': 0,
+            'total_entities_stored': 0
         }
         
         # Start workers
         self._start_workers()
-        logger.info(f"✅ EntityExtractionQueue initialized with {self.worker_count} workers")
+        
+        # Start timeout monitor thread
+        self.timeout_worker = threading.Thread(
+            target=self._timeout_monitor_worker,
+            name="EntityTimeoutMonitor",
+            daemon=True
+        )
+        self.timeout_worker.start()
+        
+        logger.info(f"✅ EntityExtractionQueue initialized with {self.worker_count} workers and timeout monitor")
     
     def _start_workers(self):
         """Start entity extraction worker threads"""
@@ -178,6 +195,53 @@ class EntityExtractionQueue:
             )
             worker.start()
             self.workers.append(worker)
+    
+    def register_opportunity_tasks(self, opportunity_id: str, expected_task_count: int):
+        """
+        Register expected number of entity extraction tasks for an opportunity
+        
+        Args:
+            opportunity_id: The opportunity ID
+            expected_task_count: Number of tasks that will be submitted for this opportunity
+        """
+        if not self.enable_entity_extraction:
+            return
+            
+        with self.tracking_lock:
+            self.opportunity_tracking[opportunity_id] = {
+                'expected': expected_task_count,
+                'completed': 0,
+                'entities': [],
+                'last_update': time.time()
+            }
+        logger.debug(f"Registered opportunity {opportunity_id} expecting {expected_task_count} entity extraction tasks")
+    
+    def _timeout_monitor_worker(self):
+        """Background worker that consolidates opportunities that have timed out"""
+        while not self.shutdown_event.is_set():
+            try:
+                current_time = time.time()
+                timed_out_opportunities = []
+                
+                with self.tracking_lock:
+                    for opp_id, data in list(self.opportunity_tracking.items()):
+                        # Check if opportunity has timed out
+                        if current_time - data['last_update'] > ENTITY_EXTRACTION_COMPLETION_TIMEOUT:
+                            timed_out_opportunities.append(opp_id)
+                
+                # Process timed out opportunities outside the lock
+                for opp_id in timed_out_opportunities:
+                    logger.warning(f"Opportunity {opp_id} entity extraction timed out after {ENTITY_EXTRACTION_COMPLETION_TIMEOUT}s - consolidating available entities")
+                    self._consolidate_opportunity_entities(opp_id, timed_out=True)
+                
+                # Sleep before next check
+                time.sleep(30)  # Check every 30 seconds
+                
+            except Exception as e:
+                logger.error(f"Error in timeout monitor worker: {e}")
+                time.sleep(10)
+        
+        logger.info("Entity extraction timeout monitor worker stopped")
     
     def _entity_worker(self, worker_id: int):
         """Entity extraction worker thread"""
@@ -209,7 +273,7 @@ class EntityExtractionQueue:
         logger.info(f"EntityWorker-{worker_id} shutdown")
     
     def _process_entity_task(self, task: Dict, worker_id: int):
-        """Process a single entity extraction task"""
+        """Process a single entity extraction task with opportunity-level consolidation"""
         try:
             with time_operation('async_entity_extraction', {
                 'file_id': task.get('file_id'),
@@ -224,17 +288,34 @@ class EntityExtractionQueue:
                     task.get('file_id')
                 )
                 
-                # Store entities if any were found
-                if entities:
-                    # Filter and consolidate entities
-                    filtered_entities = self._filter_entities_by_confidence(entities)
-                    if filtered_entities:
-                        stored_count = self.entity_manager.store_entities(filtered_entities)
+                # Accumulate entities instead of storing immediately
+                opportunity_complete = False
+                with self.tracking_lock:
+                    opp_id = task['opportunity_id']
+                    if opp_id in self.opportunity_tracking:
+                        tracking_data = self.opportunity_tracking[opp_id]
+                        tracking_data['entities'].extend(entities)
+                        tracking_data['completed'] += 1
+                        tracking_data['last_update'] = time.time()
                         
-                        with self.stats_lock:
-                            self.stats['entities_extracted'] += stored_count
+                        # Check if opportunity is complete
+                        if tracking_data['completed'] >= tracking_data['expected']:
+                            opportunity_complete = True
                         
-                        logger.debug(f"EntityWorker-{worker_id}: Stored {stored_count} entities for {task['content_type']} {task.get('file_id', task['opportunity_id'])}")
+                        logger.debug(f"EntityWorker-{worker_id}: Added {len(entities)} entities for {task['content_type']} {task.get('file_id', task['opportunity_id'])} ({tracking_data['completed']}/{tracking_data['expected']} tasks complete)")
+                    else:
+                        # Fallback: store immediately if no tracking registered
+                        logger.warning(f"No tracking registered for opportunity {opp_id} - storing entities immediately")
+                        if entities:
+                            filtered_entities = self._filter_entities_by_confidence(entities)
+                            if filtered_entities:
+                                stored_count = self.entity_manager.store_entities(filtered_entities)
+                                with self.stats_lock:
+                                    self.stats['entities_extracted'] += stored_count
+                
+                # Consolidate if opportunity is complete (outside the lock)
+                if opportunity_complete:
+                    self._consolidate_opportunity_entities(task['opportunity_id'])
                 
                 with self.stats_lock:
                     self.stats['tasks_completed'] += 1
@@ -251,6 +332,107 @@ class EntityExtractionQueue:
             return [entity for entity in entities if entity.confidence_score >= ENTITY_CONF_THRESHOLD]
         except ImportError:
             return entities  # If no threshold configured, return all
+    
+    def _consolidate_opportunity_entities(self, opportunity_id: str, timed_out: bool = False):
+        """
+        Consolidate and store all entities for a completed opportunity
+        
+        Args:
+            opportunity_id: The opportunity ID to consolidate
+            timed_out: Whether this consolidation is due to timeout
+        """
+        try:
+            entities_to_store = []
+            
+            with self.tracking_lock:
+                if opportunity_id in self.opportunity_tracking:
+                    tracking_data = self.opportunity_tracking[opportunity_id]
+                    entities_to_store = tracking_data['entities'][:]  # Copy the list
+                    
+                    # Log completion details
+                    completed = tracking_data['completed']
+                    expected = tracking_data['expected']
+                    if timed_out:
+                        logger.warning(f"🕒 Opportunity {opportunity_id} consolidation (TIMEOUT): {completed}/{expected} tasks, {len(entities_to_store)} raw entities")
+                    else:
+                        logger.info(f"✅ Opportunity {opportunity_id} consolidation (COMPLETE): {completed}/{expected} tasks, {len(entities_to_store)} raw entities")
+                    
+                    # Remove from tracking
+                    del self.opportunity_tracking[opportunity_id]
+            
+            if entities_to_store:
+                # Apply the same consolidation logic as the existing _process_opportunity_entities method
+                with time_operation('entity_consolidation_async', {'opportunity_id': opportunity_id, 'entity_count': len(entities_to_store)}):
+                    # Filter by confidence
+                    filtered_entities = self._filter_entities_by_confidence(entities_to_store)
+                    
+                    # Consolidate per opportunity (remove duplicates)
+                    consolidated_entities = self._consolidate_entities_per_opportunity(filtered_entities)
+                    
+                    if consolidated_entities:
+                        # Store to database
+                        stored_count = self.entity_manager.store_entities(consolidated_entities)
+                        
+                        with self.stats_lock:
+                            self.stats['total_entities_stored'] += stored_count
+                            if timed_out:
+                                self.stats['opportunities_timed_out'] += 1
+                            else:
+                                self.stats['opportunities_completed'] += 1
+                        
+                        logger.info(f"📊 Opportunity {opportunity_id}: Stored {stored_count} consolidated entities (from {len(entities_to_store)} raw entities)")
+                    else:
+                        logger.debug(f"Opportunity {opportunity_id}: No entities passed consolidation")
+            
+        except Exception as e:
+            logger.error(f"Error consolidating entities for opportunity {opportunity_id}: {e}")
+    
+    def _consolidate_entities_per_opportunity(self, entities) -> List:
+        """Consolidate entities per opportunity with absolute uniqueness (same logic as main processor)"""
+        if not entities:
+            return []
+        
+        logger.debug(f"🔄 Consolidating {len(entities)} entities per opportunity")
+        
+        opportunity_groups = {}
+        for entity in entities:
+            opp_id = entity.opportunity_id
+            if opp_id not in opportunity_groups:
+                opportunity_groups[opp_id] = []
+            opportunity_groups[opp_id].append(entity)
+        
+        consolidated = []
+        
+        for opp_id, opp_entities in opportunity_groups.items():
+            seen_emails = set()
+            seen_names = set()
+            opportunity_entities = []
+            
+            for entity in opp_entities:
+                if entity.email and entity.email.strip():
+                    email_key = entity.email.lower().strip()
+                    if email_key not in seen_emails:
+                        seen_emails.add(email_key)
+                        opportunity_entities.append(entity)
+                        logger.debug(f"✅ Added entity with email: {entity.email}")
+                    else:
+                        logger.debug(f"❌ Duplicate email filtered: {entity.email}")
+                elif entity.name and entity.name.strip():
+                    name_key = entity.name.lower().strip()
+                    if name_key not in seen_names:
+                        seen_names.add(name_key)
+                        opportunity_entities.append(entity)
+                        logger.debug(f"✅ Added entity with name: {entity.name}")
+                    else:
+                        logger.debug(f"❌ Duplicate name filtered: {entity.name}")
+                else:
+                    logger.debug(f"❌ Entity has no email or name")
+            
+            logger.debug(f"Opportunity {opp_id}: {len(opportunity_entities)} unique entities")
+            consolidated.extend(opportunity_entities)
+        
+        logger.debug(f"📊 Consolidation result: {len(consolidated)} unique entities across all opportunities")
+        return consolidated
     
     def submit_task(self, text_content: str, opportunity_id: str, content_type: str, file_id: int = None):
         """
@@ -304,6 +486,15 @@ class EntityExtractionQueue:
         # Signal shutdown
         self.shutdown_event.set()
         
+        # Consolidate any remaining opportunities before shutdown
+        remaining_opportunities = []
+        with self.tracking_lock:
+            remaining_opportunities = list(self.opportunity_tracking.keys())
+        
+        for opp_id in remaining_opportunities:
+            logger.info(f"Consolidating remaining entities for opportunity {opp_id} during shutdown")
+            self._consolidate_opportunity_entities(opp_id, timed_out=True)
+        
         # Add shutdown sentinels
         for _ in self.workers:
             try:
@@ -318,6 +509,12 @@ class EntityExtractionQueue:
             if worker.is_alive():
                 logger.warning(f"EntityWorker {worker.name} did not stop within {timeout/60:.1f} minute timeout")
                 all_workers_stopped = False
+        
+        # Wait for timeout monitor to stop
+        if hasattr(self, 'timeout_worker') and self.timeout_worker.is_alive():
+            self.timeout_worker.join(timeout=10)  # Short timeout for monitor
+            if self.timeout_worker.is_alive():
+                logger.warning("Entity timeout monitor did not stop cleanly")
         
         # If workers didn't stop cleanly, log warning but continue
         if not all_workers_stopped:
@@ -454,6 +651,7 @@ class ScalableEnhancedProcessor:
             'opportunities_processed': 0,
             'titles_embedded': 0,
             'descriptions_embedded': 0,
+            'documents_processed': 0,  # Count of all documents processed (embedded + skipped)
             'documents_embedded': 0,
             'documents_skipped': 0,
             'documents_already_processed': 0,  # Files skipped due to previous processing
@@ -698,6 +896,7 @@ class ScalableEnhancedProcessor:
                 'opportunities_processed': 0,
                 'titles_embedded': 0,
                 'descriptions_embedded': 0,
+                'documents_processed': 0,  # Count of all documents processed (embedded + skipped)
                 'documents_embedded': 0,
                 'documents_skipped': 0,
                 'documents_already_processed': 0,  # Files skipped due to previous processing
@@ -742,9 +941,31 @@ class ScalableEnhancedProcessor:
                         self.progress_callback(self.stats['opportunities_processed'])
                     except Exception as e:
                         logger.warning(f"Progress callback failed: {e}")
+
+    def _transfer_entity_stats_realtime(self):
+        """Transfer current entity extraction stats to main processor stats for real-time updates"""
+        if self.enable_entity_extraction and self.entity_queue:
+            try:
+                entity_stats = self.entity_queue.get_stats()
+                entities_extracted = entity_stats.get('total_entities_stored', 0)
+                
+                # Update shared stats
+                with self.stats_lock:
+                    self.stats['entities_extracted'] = entities_extracted
+                    
+                    # Update task-specific stats if available
+                    if hasattr(self, 'task_specific_stats') and self.task_specific_stats is not None:
+                        self.task_specific_stats['entities_extracted'] = entities_extracted
+                
+                logger.debug(f"Transferred entity stats: {entities_extracted} entities extracted")
+            except Exception as e:
+                logger.debug(f"Failed to transfer entity stats: {e}")
     
     def get_current_stats(self):
         """Get current processing statistics (thread-safe)"""
+        # Update entity stats for real-time display
+        self._transfer_entity_stats_realtime()
+        
         with self.stats_lock:
             return self.stats.copy()
     
@@ -1134,9 +1355,13 @@ class ScalableEnhancedProcessor:
                 
                 # Transfer entity extraction stats to task-specific stats
                 if entity_final_stats and hasattr(self, 'task_specific_stats') and self.task_specific_stats is not None:
-                    entities_extracted = entity_final_stats.get('entities_extracted', 0)
+                    # Use the new consolidated stats
+                    entities_extracted = entity_final_stats.get('total_entities_stored', 0)
+                    opportunities_completed = entity_final_stats.get('opportunities_completed', 0)
+                    opportunities_timed_out = entity_final_stats.get('opportunities_timed_out', 0)
+                    
                     self.task_specific_stats['entities_extracted'] = entities_extracted
-                    logger.info(f"🔧 Transferred {entities_extracted} entities_extracted to task-specific stats")
+                    logger.info(f"🔧 Entity extraction summary: {entities_extracted} entities stored, {opportunities_completed} opportunities completed, {opportunities_timed_out} timed out")
                 else:
                     logger.warning("Failed to transfer entity extraction stats - no final stats or task-specific stats not available")
             
@@ -1178,6 +1403,7 @@ class ScalableEnhancedProcessor:
             else:
                 stats_to_return = {
                     'opportunities_processed': self.stats['opportunities_processed'],
+                    'documents_processed': self.stats['documents_processed'],
                     'documents_embedded': self.stats['documents_embedded'],
                     'documents_skipped': self.stats['documents_skipped'],
                     'total_chunks_generated': self.stats['total_chunks_generated'],
@@ -1191,6 +1417,24 @@ class ScalableEnhancedProcessor:
     def _process_opportunity_simplified(self, opportunity: Opportunity, replace_existing_records: bool = False):
         """Process a single opportunity using simplified architecture (no intra-opportunity parallelization)"""
         with time_operation('process_opportunity_simplified', {'opportunity_id': opportunity.opportunity_id, 'document_count': len(opportunity.documents)}):
+            
+            # Register expected entity extraction task count for this opportunity
+            if self.enable_entity_extraction and self.entity_queue:
+                task_count = 0
+                
+                # Count description task
+                if opportunity.description and len(opportunity.description.strip()) > 50:
+                    task_count += 1
+                
+                # Count document tasks (excluding existing files)
+                for document in opportunity.documents:
+                    if document.existing_file != 1:  # Only count new files
+                        task_count += 1
+                
+                # Register the expected task count
+                if task_count > 0:
+                    self.entity_queue.register_opportunity_tasks(opportunity.opportunity_id, task_count)
+                    logger.debug(f"Registered {task_count} expected entity extraction tasks for opportunity {opportunity.opportunity_id}")
             
             # Process title and description (fast, keep sequential)
             if opportunity.opportunity_id not in self.processed_opportunities:
@@ -1240,6 +1484,9 @@ class ScalableEnhancedProcessor:
             
             # Only increment progress counter after ALL processing is complete for this opportunity
             self._update_stats('opportunities_processed', 1)
+            
+            # Transfer entity extraction stats for real-time updates
+            self._transfer_entity_stats_realtime()
 
     def _process_single_file_simplified(self, document: Document, opportunity_id: str, posted_date: str, replace_existing_records: bool = False):
         """Process a single document using simplified architecture with file deduplication support"""
@@ -1318,6 +1565,9 @@ class ScalableEnhancedProcessor:
                         self._update_stats('documents_embedded', 1)
                 else:
                     self._update_stats('documents_skipped', 1)
+                
+                # Always count document as processed regardless of embedded/skipped
+                self._update_stats('documents_processed', 1)
                 
                 # Submit entity extraction task asynchronously (non-blocking)
                 if self.enable_entity_extraction and self.entity_queue and len(text_content.strip()) > 50:
@@ -1457,7 +1707,10 @@ class ScalableEnhancedProcessor:
                     # File is already marked as processed in session cache by _try_claim_file_for_processing()
                 else:
                     # Even if no embeddings, file is already marked as processed
-                    self._update_stats('documents_skipped', 1)                # Extract entities asynchronously
+                    self._update_stats('documents_skipped', 1)
+                
+                # Always count document as processed regardless of embedded/skipped
+                self._update_stats('documents_processed', 1)
                 if self.enable_entity_extraction and self.entity_queue and len(text_content.strip()) > 50:
                     self.entity_queue.submit_task(
                         text_content, 

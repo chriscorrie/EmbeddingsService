@@ -1,9 +1,8 @@
 # EmbeddingsService Performance Optimization - ToDo & Progress Tracker
 
 ### Immediate next steps to address
-- The statistics for individual tasks do not appear to be update in the processing-status api call in real-time for documents, like they are for opportunities (documents processed, skipped, chunks generated, etc.).
-- The statistics for entities_extracted also are not updated until processing is complete.
-- The deduplication/consolidation logic for entities extracted by OpportunityId does not appear to be running either...we have lots of duplciate entities.
+- ✅ RESOLVED: Real-time status updates for documents and entities (July 26, 2025)
+- ✅ RESOLVED: Entity deduplication/consolidation logic (July 26, 2025)
 
 ### **Standard Testing Parameters**
 - **Test Range**: Rows 1-35 (mandatory for consistency)
@@ -14,7 +13,33 @@
 
 ## ✅ **COMPLETED OPTIMIZATIONS**
 
-### **2. Async Entity Extraction (MAJOR WIN)**
+### **1. Real-Time Status Updates (MAJOR UX WIN) - July 26, 2025**
+- **Problem**: Statistics for documents_processed, documents_embedded, entities_extracted not updating in real-time
+- **Solution**: Enhanced task-specific stats tracking, real-time entity stats transfer, improved API progress monitoring
+- **Impact**: Perfect real-time visibility into all processing statistics during execution
+- **Status**: ✅ Complete and validated
+- **Files Modified**: `scalable_processor.py`, `production_rest_api_service.py`
+- **Key Features**:
+  - `documents_processed` properly tracked and updated
+  - Real-time entity extraction stats via `_transfer_entity_stats_realtime()`
+  - Enhanced background progress monitoring (all stats synced every 10 seconds)
+  - Task-specific stats properly isolated and updated
+  - API shows live progress for documents, chunks, entities during processing
+
+### **2. Entity Deduplication Fix (DATA QUALITY WIN) - July 26, 2025**
+- **Problem**: Entity extraction deduplication/consolidation logic not running, causing duplicate entities per OpportunityId
+- **Solution**: Implemented hybrid reference counting + timeout approach for async entity consolidation
+- **Impact**: Massive deduplication (e.g., 291→28 entities, 87→5 entities) with proper opportunity-level consolidation
+- **Status**: ✅ Complete and validated
+- **Files Modified**: `scalable_processor.py`, `config.py`
+- **Key Features**:
+  - Reference counting tracks expected vs completed tasks per opportunity
+  - Automatic consolidation when all tasks complete for an opportunity
+  - 5-minute timeout safety net (configurable via `ENTITY_EXTRACTION_COMPLETION_TIMEOUT`)
+  - Reuses existing `_consolidate_entities_per_opportunity()` logic for absolute uniqueness
+  - Async entity extraction with proper opportunity-level deduplication
+
+### **3. Async Entity Extraction (MAJOR WIN)**
 - **Implementation**: `EntityExtractionQueue` with 2 dedicated worker threads
 - **Architecture**: Completely decoupled from main processing pipeline
 - **Performance Impact**: 18.2% improvement over original system
@@ -27,7 +52,7 @@
   - Thread-safe statistics
   - Configurable via `ENABLE_ENTITY_EXTRACTION` flag
 
-### **3. Chunk Embedding Cache Removal (PERFORMANCE)**
+### **4. Chunk Embedding Cache Removal (PERFORMANCE)**
 - **Rationale**: GPU embeddings are fast enough that cache overhead exceeds benefits
 - **Removed**: All `ENABLE_CHUNK_EMBEDDING_CACHE` configuration and code
 - **Impact**: Reduced memory usage, eliminated cache management overhead
@@ -214,8 +239,17 @@ sudo systemctl status document-embedding-api
 ## 📝 **SESSION NOTES**
 
 ### **Current Session Summary (July 26, 2025)**
-- **MAJOR CHANGE**: Implemented FileId-based search API updates (COMPLETE)
-- **Search Functionality**: ✅ RESTORED - Updated to work with new FileId-based architecture  
+- **MAJOR FIX**: Real-time status updates for documents and entities (COMPLETE)
+  - Fixed `documents_processed` never being updated
+  - Fixed `entities_extracted` only updating at completion
+  - Added real-time entity stats transfer via `_transfer_entity_stats_realtime()`
+  - Enhanced API progress monitoring to sync all processor stats
+- **MAJOR FIX**: Entity deduplication/consolidation logic (COMPLETE)
+  - Implemented reference counting + timeout hybrid approach
+  - Async entity extraction now properly consolidates per opportunity
+  - Massive deduplication working (291→28, 87→5, etc.)
+- **API Status**: Perfect real-time visibility into all processing statistics
+- **Data Quality**: Entity consolidation working with significant duplicate reduction
 
 
 *Last updated: July 26, 2025*

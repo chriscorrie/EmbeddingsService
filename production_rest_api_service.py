@@ -301,15 +301,23 @@ def start_progress_monitor(task_id: str):
                     try:
                         # Try to get task-specific stats first
                         if hasattr(processor, 'task_specific_stats') and processor.task_specific_stats is not None:
-                            current_processed = processor.task_specific_stats.get('opportunities_processed', 0)
-                            logger.debug(f"Using task-specific stats for {task_id}: {current_processed} opportunities")
+                            # Sync ALL task-specific stats for real-time updates
+                            processor_stats = processor.task_specific_stats.copy()
+                            logger.debug(f"Using task-specific stats for {task_id}: {processor_stats}")
+                            
+                            # Update task progress with all current stats
+                            with processing_lock:
+                                if task_id in processing_tasks:
+                                    task = processing_tasks[task_id]
+                                    task.opportunities_processed = processor_stats.get('opportunities_processed', 0)
+                                    # Update isolated stats with ALL current processor stats
+                                    task.isolated_stats.update(processor_stats)
                         else:
                             # Fallback to shared stats
                             current_stats = processor.get_current_stats()
                             current_processed = current_stats.get('opportunities_processed', 0)
                             logger.debug(f"Using shared stats for {task_id}: {current_processed} opportunities")
-                        
-                        update_task_progress(task_id, current_processed)
+                            update_task_progress(task_id, current_processed)
                     except Exception as e:
                         logger.debug(f"Progress monitor error for task {task_id}: {e}")
                 
@@ -343,8 +351,12 @@ def process_embeddings_background(task_id: str, start_row_id: int, end_row_id: i
         task_progress_tracker = {
             'opportunities_processed': 0,
             'documents_processed': 0,
+            'documents_embedded': 0,
             'documents_skipped': 0,
+            'titles_embedded': 0,
+            'descriptions_embedded': 0,
             'total_chunks_generated': 0,
+            'boilerplate_chunks_filtered': 0,
             'entities_extracted': 0,
             'errors': 0
         }
@@ -354,17 +366,23 @@ def process_embeddings_background(task_id: str, start_row_id: int, end_row_id: i
             with processing_lock:
                 if task_id in processing_tasks:
                     task = processing_tasks[task_id]
-                    # Use task-specific counter instead of shared processor stats
+                    
+                    # Update opportunities count from callback
                     if processed_count is not None:
                         task_progress_tracker['opportunities_processed'] = processed_count
                     else:
                         task_progress_tracker['opportunities_processed'] += 1
                     
-                    # Update the task with isolated stats
+                    # Also sync all current processor stats if available
+                    if processor and hasattr(processor, 'task_specific_stats') and processor.task_specific_stats is not None:
+                        # Merge current processor stats into our tracker
+                        task_progress_tracker.update(processor.task_specific_stats)
+                    
+                    # Update the task with all isolated stats
                     task.opportunities_processed = task_progress_tracker['opportunities_processed']
                     task.isolated_stats.update(task_progress_tracker)
                     
-                    logger.debug(f"Task {task_id} isolated progress: {task.opportunities_processed}/{task.total_opportunities}")
+                    logger.debug(f"Task {task_id} isolated progress: {task.opportunities_processed}/{task.total_opportunities} ops, {task_progress_tracker.get('documents_embedded', 0)} docs embedded")
 
         # Set the task-specific progress callback on the processor
         processor.progress_callback = task_specific_progress_callback
@@ -396,9 +414,13 @@ def process_embeddings_background(task_id: str, start_row_id: int, end_row_id: i
                 if task.isolated_stats and result:
                     task.isolated_stats.update({
                         'opportunities_processed': result.get('opportunities_processed', 0),
+                        'documents_processed': result.get('documents_processed', 0),
                         'documents_embedded': result.get('documents_embedded', 0),
                         'documents_skipped': result.get('documents_skipped', 0),
+                        'titles_embedded': result.get('titles_embedded', 0),
+                        'descriptions_embedded': result.get('descriptions_embedded', 0),
                         'total_chunks_generated': result.get('total_chunks_generated', 0),
+                        'boilerplate_chunks_filtered': result.get('boilerplate_chunks_filtered', 0),
                         'entities_extracted': result.get('entities_extracted', 0),
                         'errors': result.get('errors', 0),
                         'processing_time': result.get('processing_time', 0.0)

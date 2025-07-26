@@ -31,6 +31,7 @@ EMBEDDING_MODEL = 'sentence-transformers/all-MiniLM-L6-v2'
 # Entity Extraction Configuration
 ENABLE_ENTITY_EXTRACTION = True  # System-wide setting for entity extraction
 ENTITY_EXTRACTION_SHUTDOWN_TIMEOUT = 3600  # Maximum time to wait for entity extraction to complete (60 minutes)
+ENTITY_EXTRACTION_COMPLETION_TIMEOUT = 300  # Timeout for opportunity entity consolidation (5 minutes)
 
 # Entity Extraction Confidence Thresholds
 ENTITY_PERSON_CONF_THRESHOLD = 0.8   # Person confidence threshold  
